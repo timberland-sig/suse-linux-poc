@@ -1,0 +1,35 @@
+### Settings for the test environment ###
+
+# You need to change these settings just once when you start, it at all.
+# *If* you need change anything here, run "make net-down server-destroy" first.
+
+### NETWORK SETTINGS
+
+# Set this to 1 to enable creating the OVS bridge "ovs_nvme"
+# This affects network and server setup only, and requires
+# openvswitch to be installed and running
+NVME_USE_OVS :=
+
+#### IP address ranges
+# Make sure this doesn't overlap with existing networks in your environment!
+# addresses will be constructed as follows (decimal arithmetic also for IPv6!)
+# For the br_nvme bridge:
+# IPv4: $IP4_PREFIX.$((SUBNET_BASE-1)).x (default 192.168.49.x)
+# IPv6: $ULA_PREFIX:$((SUBNET_BASE-1))::x (default fddf:d:f:49::x)
+# For OVS (if enabled):
+# IPv4: $IP4_PREFIX.$((SUBNET_BASE+OVS_VLAN_ID)).x (default e.g. 192.168.51.x)
+# IPv6: $ULA_PREFIX:$((SUBNET_BASE+OVS_VLAN_ID)::x
+# 192.168.50.x for VLAN 0 and 192.168.52.x for VLAN 2, IPv6 accordingly
+IP4_PREFIX := 192.168
+ULA_PREFIX := fddf:d:f
+SUBNET_BASE := 50
+# VLAN port to set up in OVS (if enabled; use value between 1 and 9)
+OVS_VLAN_ID := 1
+
+### SERVER SETTINGS
+
+# Number of namespaces ("disks") to create export from the nvmet server
+# Usually this will be one disk per NVMeoF client
+# If this is > 4, please edit nvmet-server/group_vars/nvme_servers
+NVME_MAX_NAMESPACES := 2
+

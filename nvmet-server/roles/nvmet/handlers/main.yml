@@ -1,0 +1,6 @@
+- name: restart nvmet service
+  become: yes
+  ansible.builtin.systemd:
+    name: nvmet
+    state: restarted
+    enabled: true

@@ -1,0 +1,52 @@
+{
+  "hosts": [
+    {% for clt in nvme_clients %}{
+      "nqn": "{{ "nqn.2014-08.org.nvmexpress:uuid:" ~ clt }}"
+    }{{ "," if loop.revindex != 1 else "" }}{% endfor %}
+  ],
+  "ports": [
+    {% for addr in nvmet_ip_addrs %}
+    {
+      "addr": {
+        "adrfam": "{{ 'ipv6' if ':' in addr else 'ipv4' }}",
+        "traddr": "{{ addr }}",
+        "trsvcid": "4420",
+        "trtype": "tcp"
+      },
+      "portid": {{ loop.index }},
+      "subsystems": [
+        {% for subsys in nvme_subsystems %}
+	"{{ nqn_format.format(loop.index) }}"{{ "," if loop.revindex != 1 else "" }}
+	{% endfor %}
+      ]
+    }{{ "," if loop.revindex != 1 else "" }}
+    {% endfor %}
+  ],
+  "subsystems": [
+    {% for subsys in nvme_subsystems %}
+    {
+      "allowed_hosts": [
+         {% for hs in subsys.hosts %}
+         "{{ "nqn.2014-08.org.nvmexpress:uuid:" ~ hs }}"{{ "," if loop.revindex != 1 else "" }}
+	 {% endfor %}
+      ],
+      "attr": {
+        "allow_any_host": "0"
+      },
+      "namespaces": [
+        {% for ds in subsys.disks %}
+        {
+          "ana_grpid": 1,
+          "device": {
+            "path": "{{ "/dev/" ~ nvme_disks[ds - 1] }}"
+          },
+          "enable": 1,
+          "nsid": {{ loop.index }}
+        }{{ "," if loop.revindex != 1 else "" }}
+	{% endfor %}
+      ],
+      "nqn": "{{ nqn_format.format(loop.index) }}"
+    }{{ "," if loop.revindex != 1 else "" }}
+    {% endfor %}
+  ]
+}

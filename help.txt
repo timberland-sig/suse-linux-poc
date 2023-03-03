@@ -1,0 +1,31 @@
+### Requirements:
+
+  - qemu-kvm, make, git, wget, curl, jq, mkisofs, dnsmasq
+  - vagrant-libvirt, ansible, python-jmespath, python-netaddr
+  - optional: openvswitch, xsltproc, mtools
+  - depending on ansible version, ansible collections "ansible.posix"
+    and/or "community.general" may beed to be installed with ansible-galaxy
+
+### Important make targets:
+
+  - make server-up: bring up network and server VM for NVMe/TCP target
+  - make server-config: apply configuration changes on NVMe server
+  - make inst: start installation on client VM in qemu
+  - make qemu: run installed client in qemu
+  - make libvirt: define client VM to run under libvirt
+  - make net-down: shutdown test network environment and shutdown server
+
+### Other useful targets:
+
+  - make help-rootless: hints about "rootless" setup
+  - make net-up: create test network environment
+  - make server-down: shutdown NVMe target
+  - make server-destroy: destroy NVMe server VM
+  - make clean: cleanup most generated files
+  - make vars-clean: remove non-volatile EFI variables store for reconfiguration
+  - make libvirt-clean: undefine libvirt VM
+  - make all-clean: cleanup everything
+
+### Edit env-config.mk to adapt configuration to your environment
+### Edit vm-config.mk to modify settings of the test VM
+

@@ -1,0 +1,35 @@
+# firewalld zone for nvmet services
+nvmet_nvmet_zone: "internal"
+
+# firewalld zone for other interfaces
+# (don't touch if empty)
+nvmet_other_zone: ""
+
+# prefix for subsystem NQNs (change this!)
+subsysnqn_prefix: "nqn.1900-01.org.bogus:"
+
+# List of disk ids to use as namespaces
+# The nvmet role will look them up in ansible_facts.devices.*.links.ids
+nvme_disk_ids: []
+
+# Networks (address/netmask format) to serve nvmet
+# Example:
+# nvme_networks:
+#   - 192.168.100.0/24
+#   - 192.168.10.0/24
+nvme_networks: []
+
+# definition of subsystems and namespaces
+# an array of objects indicating a list of disks (namespaces)
+# and a list of allowed host uuids
+# disks are numbered from 1, largest number is NDISKS from Vagrantfile
+# Example:
+# nvme_subsystems:
+#   - disks: [1, 2]
+#     hosts:
+#       - 74c564fe-b433-4e6a-b9e7-4d7bfe2e34fd
+#   - disks: [3]
+#     hosts:
+#       - 74c564fe-b433-4e6a-b9e7-4d7bfe2e34fd
+#       - a3483208-f630-4363-a1b3-a3c057686ac5
+nvme_subsystems: []

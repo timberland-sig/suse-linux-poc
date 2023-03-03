@@ -1,0 +1,223 @@
+- name: subsysnqn format
+  ansible.builtin.set_fact:
+    nqn_format: >-
+      {{ subsysnqn_prefix ~
+         lookup("pipe", "hostname") | regex_replace("\..*", "") ~ "." ~
+         inventory_hostname ~ ".subsys{0:02d}" }}
+
+- name: disk list
+  ansible.builtin.set_fact:
+    nvme_subsystems: >-
+      {{ all_nvme_subsystems | json_query("[:" ~ max_namespaces ~ "]") }}
+
+- name: client host list
+  ansible.builtin.set_fact:
+    # This uses jsmespath "flatten projection" to concatenate lists
+    nvme_clients: '{{ nvme_subsystems | json_query("[*].hosts[]") | unique }}'
+
+- name: construct array of devices matching serial numbers
+  set_fact:
+    # Given nvme_disk_ids (a list of link names aka serial numbers)
+    # as input, look up the device name matching the given serial number in
+    # ansible_facts.
+    # The result is stored in results[$ID].ansible_facts.devnode, e.g.
+    #    (item=virtio-nvme_v04) => {"ansible_facts": {"devnode": "vde"} }
+    # 
+    # ansible_facts.devices.<device>.links.ids is a list which will have the serial
+    # number as one element.
+    #
+    # dict2items must be used to make the device name accessible as "key"
+    # (https://stackoverflow.com/questions/41579581/filter-object-by-property-and-select-with-key-in-jmespath)
+    #
+    # In theory it would be sufficient to look for ids starting with "virtio-nvme-".
+    # But jmespath has no function to filter list elements by substring or "startswith",
+    # therefore we needed to construct the list with exact serials in the
+    # previous step, iterate over that list, and construct the result via
+    # "register"
+    # (https://stackoverflow.com/questions/29399581/using-set-facts-and-with-items-together-in-ansible)
+    devnode: >-
+      {{ ansible_facts["devices"] | dict2items |
+      json_query("[?value.links.ids.contains(@, '" ~ item ~ "')].key | [0]") }}
+  loop: '{{ nvme_disk_ids }}'
+  register: __nvme_disk_array
+
+- name: construct list of nvme disks
+  ansible.builtin.set_fact:
+    # With the main work done in the prevous two steps, we just need to
+    # filter __nvme_disk_array for non-empty results, and extract the
+    # devnode property.
+    # The result is a flat list of device node names, e.g. ['vdb', 'vdc'].
+    nvme_disks: >-
+      {{ __nvme_disk_array.results |
+         json_query("[?ansible_facts.devnode!=''].ansible_facts.devnode") }}
+
+- name: get IPv4 addresses for nvmet
+  ansible.builtin.set_fact:
+    # filter IP addresses by members of nvme_networks
+    # will be stored in results[$NETWORK].ansible_facts.ip
+    ip4: >-
+      {{ ansible_facts['all_ipv4_addresses'] | ipaddr(item) | first | default(omit) }}
+  loop: '{{ nvme_networks }}'
+  register: __nvmet_ip_res
+
+- name: construct list of nvmet IPv4 addresses
+  ansible.builtin.set_fact:
+    # creates a flat list of all IP addresses for nvmet
+    nvmet_ip4_addrs: >-
+      {{ __nvmet_ip_res.results | json_query("[].ansible_facts.ip4") }}
+
+- name: get IPv6 addresses for nvmet
+  ansible.builtin.set_fact:
+    # filter IP addresses by members of nvme_networks
+    # will be stored in results[$NETWORK].ansible_facts.ip6
+    ip6: >-
+      {{ ansible_facts['all_ipv6_addresses'] | ipaddr(item) | first | default(omit) }}
+  loop: '{{ nvme_networks }}'
+  register: __nvmet_ip6_res
+
+- name: construct list of nvmet IPv6 addresses
+  ansible.builtin.set_fact:
+    # creates a flat list of all IP addresses for nvmet
+    nvmet_ip6_addrs: >-
+      {{ __nvmet_ip6_res.results | json_query("[].ansible_facts.ip6") }}
+
+- name: get interface names for nvmet (IPv4)
+  ansible.builtin.set_fact:
+    # get network interface names for nvmet interfaces
+    # will be stored as results[$IP_ADDR].ansible_facts.iface
+    # ansible_facts.$IFACE.ipv4 is a scalar
+    iface: >-
+      {{ ansible_facts['interfaces'] |
+         map('extract', ansible_facts) | list |
+         json_query("[?ipv4.address=='" ~ item ~ "'].device") | first }}
+  loop: '{{ nvmet_ip4_addrs }}'
+  register: __nvmet_iface_res
+
+- name: get interface names for nvmet (IPv6)
+  ansible.builtin.set_fact:
+    # get network interface names for nvmet interfaces
+    # will be stored as results[$IP_ADDR].ansible_facts.iface
+    # ansible_facts.$IFACE.ipv6 is an array
+    #
+    # ansible_facts['interfaces'] -> [ "lo", "eth0", ... ]
+    # map() | list -> [ "lo": { properties of iface }, ... ]
+    # 1st json_query -> [ { device: eth0, addresses: [ ...] }, ... ]
+    # 2nd json_query filters for IPv6 address matching item and extracts device
+    iface: >-
+      {{ ansible_facts['interfaces'] |
+         map('extract', ansible_facts) | list |
+         json_query("[].{device: device, addresses: ipv6[*].address}") |
+         json_query("[?contains(addresses, '" ~ item ~ "')].device") }}
+  loop: '{{ nvmet_ip6_addrs }}'
+  register: __nvmet_iface6_res
+
+- name: construct list of all nvmet addresses
+  ansible.builtin.set_fact:
+    # creates a flat list of all IP addresses for nvmet
+    nvmet_ip_addrs: >-
+      {{ nvmet_ip6_addrs + nvmet_ip4_addrs }}
+
+- name: construct list of nvmet interfaces
+  ansible.builtin.set_fact:
+    # create flat list of interface names, e.g. ['eth1', 'eth2']
+    nvmet_interfaces: >-
+      {{ (__nvmet_iface_res.results + __nvmet_iface6_res.results) |
+         json_query("[].ansible_facts.iface") | flatten | unique }}
+
+- name: install required packages
+  become: yes
+  ansible.builtin.zypper:
+    name: '{{ item }}'
+    state: latest
+    update_cache: no
+    disable_recommends: yes
+  loop:
+    - nvmetcli
+    - firewalld
+
+- name: add nvmet to modules-load.d
+  become: yes
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/nvmet.conf
+    content: nvmet
+
+- name: load nvmet
+  become: yes
+  modprobe:
+    name: nvmet_tcp
+  notify: restart nvmet service
+
+- name: create config.json
+  become: yes
+  ansible.builtin.template:
+    src: nvmet.json.j2
+    dest: /etc/nvmet/config.json
+    mode: 0644
+  notify: restart nvmet service
+
+- name: start firewalld
+  become: yes
+  ansible.builtin.systemd:
+    name: firewalld
+    enabled: yes
+    state: started
+
+- name: set zone of nvmet interfaces
+  become: yes
+  firewalld:
+    zone: '{{ nvmet_nvmet_zone }}'
+    interface: '{{ item }}'
+    state: enabled
+    permanent: yes
+    immediate: yes
+  loop: '{{ nvmet_interfaces }}'
+    
+- name: set zone of nvmet interfaces (ifconfig)
+  become: yes
+  ansible.builtin.lineinfile:
+    path: /etc/sysconfig/network/ifcfg-{{ item }}
+    line: 'ZONE="{{ nvmet_nvmet_zone }}"'
+    regexp: '^ZONE='
+  loop: '{{ nvmet_interfaces }}'
+
+- name: set zone of other interfaces
+  become: yes
+  firewalld:
+    zone: '{{ nvmet_other_zone }}'
+    interface: '{{ item }}'
+    state: enabled
+    permanent: yes
+    immediate: yes
+  when: nvmet_other_zone != "" and item != "lo" and not (item in nvmet_interfaces)
+  loop: '{{ ansible_facts["interfaces"] }}'
+    
+- name: set zone of other interfaces (ifconfig)
+  become: yes
+  ansible.builtin.lineinfile:
+    path: /etc/sysconfig/network/ifcfg-{{ item }}
+    line: 'ZONE="{{ nvmet_other_zone }}"'
+    regexp: '^ZONE='
+  when: nvmet_other_zone != "" and item != "lo" and not (item in nvmet_interfaces)
+  loop: '{{ ansible_facts["interfaces"] }}'
+
+- name: open firewall ports for nvmet
+  become: yes
+  firewalld:
+    port: '{{ item ~ "/tcp" }}'
+    permanent: yes
+    immediate: yes
+    state: enabled
+    zone: internal
+  loop:
+    - 8009
+    - 4420
+
+- name: print client UUIDs
+  ansible.builtin.debug:
+    msg: >-
+      {{ "=== allowed UUIDs: " ~ nvme_clients | join(', ') ~ " ===" }}
+
+- name: print target IP addresses
+  ansible.builtin.debug:
+    msg: >-
+      {{ "=== IP addresses: " ~ nvmet_ip_addrs | join(", ") ~ " ===" }}

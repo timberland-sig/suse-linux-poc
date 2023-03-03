@@ -1,0 +1,63 @@
+# -*-yaml-*-
+# prefix for subsystem NQNs (change this!)
+# <host name>.<server VM hostname>,subsysNN will be appended
+subsysnqn_prefix: "nqn.2022-12.org.nvmexpress.boot.poc:"
+
+# Max number of exported namespaces.
+# This should match MAX_NAMESPACES in Vagrantfile.
+max_namespaces: 2
+
+# Definition of subsystems and namespaces (see roles/nvmet/defaults)
+#
+# nvme_subsystems is an array. The first entry corresponds to SUBSYS=01, etc.
+# Every subsystem definition consists of two fields "disks" and "hosts".
+# "disks" is an array of disk numbers. Disks are numbered from 1,
+#    the largest number is max_namespaces.
+#    A subsystem can have multiple disks, but every disk can only be
+#    attached to one subsystem.
+# "hosts" is an array of allowed host UUIDs.
+#    The UUIDs should match the UUIDs of NVMeoF clients.
+#    A host can be member of several subsystem's host lists.
+# The "ffff" string below will be automatically replaced by the first
+# created VM's UUID. Additional entries must be made manually.
+#
+# The template below assumes that every subsystem contains 1 disk and is
+# exported to 1 host. That isn't necessarily so, but allows automatic fill-in
+# of the host UUID by the Makefile, using the SUBSYS variable from config.mk
+all_nvme_subsystems:
+  - disks:
+      - 1
+    hosts:
+      - ffffffff-ffff-ffff-ffff-ffffffffff01
+  - disks:
+      - 2
+    hosts:
+      - ffffffff-ffff-ffff-ffff-ffffffffff02
+  - disks:
+      - 3
+    hosts:
+      - ffffffff-ffff-ffff-ffff-ffffffffff03
+  - disks:
+      - 4
+    hosts:
+      - ffffffff-ffff-ffff-ffff-ffffffffff04
+
+# List of "nvme networks" in ip-address/netmask format
+# The nvmet role will add nvmet ports on interfaces matching these networks.
+# Should match the networks defined in the Vagrantfile.
+# IPv4 and IPv6 networks need to be listed separately
+# This will be filled in by "network/setup.sh networks" when
+# nvme_servers is generated from template
+nvme_networks:
+
+### Experts only below here ###
+
+# firewalld zones
+nvmet_nvmet_zone: internal
+nvmet_other_zone: external
+
+# Format string for device ID formatting by number
+# The numbering scheme must match vagrant's "additional disks".
+# See Vagrantfile; vagrant uses "<bus name>-<serial>", where
+# bus name defaults to "virtio".
+device_id_format: "virtio-nvme_v{0:02d}"

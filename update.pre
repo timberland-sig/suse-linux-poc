@@ -1,0 +1,193 @@
+#! /bin/sh
+
+find_iface_of_mac() {
+    local mac="$1" addr dir
+
+    for dir in /sys/class/net/*; do
+	[ -d "$dir" ] || continue
+	read addr <"$dir/address"
+	if [ "$addr" = "$mac" ]; then
+	    echo "${dir##*/}"
+	    return 0
+	fi
+    done
+    return 1
+}
+
+nbft_run_jq() {
+    local st
+    local opts="-e"
+
+    while [ $# -gt 0 ]; do
+        case $1 in
+            -*)
+                opts="$opts $1"
+                ;;
+            *)
+                break
+                ;;
+        esac
+        shift
+    done
+    jq $opts "$1" <<EOF
+$2
+EOF
+    st=$?
+    if [ $st -ne 0 ]; then
+        echo "Warning: NBFT: jq error while processing \"$1\"" >&2
+        return $st
+    else
+        return 0
+    fi
+}
+nbft_check_empty_address() {
+    # suppress meaningless or empty IP addresses
+    # "null" is returned by jq if no match found for expression
+    case $1 in
+        null|"::"|"0.0.0.0") ;;
+        *)
+            echo "$1"
+            ;;
+    esac
+}
+
+nbft_parse_hfi() {
+    local hfi_json=$1
+    local mac iface ipaddr prefix vlan gateway dns1 dns2 hostname adrfam dhcp
+    local bootproto default_route ifacename dns config
+
+    mac=$(nbft_run_jq -r .mac_addr "$hfi_json") || return 1
+    iface=$(find_iface_of_mac "$mac") || {
+	echo "No interface with MAC address $mac found" >&2
+	return 1
+    }
+
+    [ ! -e /tmp/net."${iface}".has_ibft_config ] || return 0
+
+    dhcp=$(nbft_run_jq -r .dhcp_server_ipaddr "$hfi_json")
+    if [ $? -eq 0 ] && [ $dhcp ] && [ "$dhcp" != null ]; then
+        case $dhcp in
+            *:*)
+                bootproto="dhcp6"
+                ;;
+            *.*.*.*)
+                bootproto="dhcp4"
+                ;;
+            *)
+                echo "Invalid value for dhcp_server_ipaddr: $dhcp" >&21
+                return 1
+                ;;
+        esac
+    else
+        bootproto="static"
+        ipaddr=$(nbft_run_jq -r .ipaddr "$hfi_json") || return 1
+
+        case $ipaddr in
+            *.*.*.*)
+                adrfam=ipv4;;
+            *:*)
+                adrfam=ipv6;;
+            *)
+                echo "invalid address: $ipaddr" >&2
+                return 1
+                ;;
+        esac
+        prefix=$(nbft_run_jq -r .subnet_mask_prefix "$hfi_json")
+        if [ $? -ne 0 ] && [ "$adrfam" = ipv6 ]; then
+            prefix=64
+        fi
+
+        gateway=$(nbft_check_empty_address \
+                      "$(nbft_run_jq -r .gateway_ipaddr "$hfi_json")")
+        dns1=$(nbft_check_empty_address \
+                   "$(nbft_run_jq -r .primary_dns_ipaddr "$hfi_json")")
+        dns2=$(nbft_check_empty_address \
+                   "$(nbft_run_jq -r .secondary_dns_ipaddr "$hfi_json")")
+        hostname=$(nbft_run_jq -r .host_name "$hfi_json") || hostname=
+
+    fi
+
+    vlan=$(nbft_run_jq .vlan "$hfi_json") || vlan=0
+    # treat VLAN zero as "no vlan"
+    [ "$vlan" -ne 0 ] || vlan=
+
+    default_route=$(nbft_run_jq .this_hfi_is_default_route "$hfi_json") || \
+        default_route=
+
+    if [ "$vlan" ]; then
+        ifacename=$iface.$vlan
+    else
+        ifacename=$iface
+    fi
+
+    #echo "== creating /run/udev/rules.d/80-ibft-net.rules ==" >&2
+    #mkdir -p /run/udev/rules.d
+    #echo 'SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", ATTR{address}=="'"$mac"'", ATTR{type}=="1", KERNEL=="eth*", NAME="'"$iface"'"' \
+    #     >"/run/udev/rules.d/80-ibft-net.rules"
+
+    mkdir -p /etc/sysconfig/network
+    echo "== creating /etc/sysconfig/network/ifcfg-$ifacename ==" >&2
+    {
+        echo "STARTMODE='auto'"
+        echo "BOOTPROTO='$bootproto'"
+        [ ! "$vlan" ] || echo "ETHERDEVICE='$iface'"
+        if [ "$bootproto" = static ]; then
+            echo "IPADDR='$ipaddr/$prefix'"
+        elif [ "$default_route" ]; then
+            echo "DHCLIENT_SET_DEFAULT_ROUTE='yes'"
+        fi
+    } >"/etc/sysconfig/network/ifcfg-$ifacename"
+
+    if [ "$gateway" ]; then
+        echo "== creating /etc/sysconfig/network/ifroute-$ifacename ==" >&2
+        echo "default $gateway - $ifacename" \
+             >"/etc/sysconfig/network/ifroute-$ifacename"
+    fi
+
+    dns="$dns1${dns2:+ $dns2}"
+    config=/etc/sysconfig/network/config
+    if [ "$dns" ]; then
+        echo "== modifying $config ==" >&2
+        >>"$config"
+        if grep -q '^NETCONFIG_DNS_STATIC_SERVERS=' "$config"; then
+            sed -E -i 's/^(NETCONFIG_DNS_STATIC_SERVERS)=.*/\1="'"$dns"'"/' "$config"
+        else
+            echo "NETCONFIG_DNS_STATIC_SERVERS='$dns'" >>"$config"
+        fi
+    fi
+
+    wicked ifup "$ifacename"
+}
+
+nbft_parse() {
+    local nbft_json=$(nvme show-nbft -H -o json)
+    local n_nbft=$(nbft_run_jq ". | length" "$nbft_json")
+    local j=0
+
+    while [ $j -lt $n_nbft ]; do
+        local all_hfi_json=$(nbft_run_jq ".[$j].hfi" "$nbft_json")
+        local n_hfi=$(nbft_run_jq ". | length" "$all_hfi_json")
+        local i=0
+
+        while [ "$i" -lt "$n_hfi" ]; do
+	        nbft_parse_hfi "$(nbft_run_jq ".[$i]" "$all_hfi_json")"
+	        i=$((i + 1))
+        done
+        j=$((j + 1))
+    done
+}
+
+nbft_parse_all() {
+    local x
+    for x in /sys/firmware/acpi/tables/NBFT*; do
+        if [ -f "$x" ]; then
+            nbft_parse
+            break
+        fi
+    done
+}
+
+nbft_parse_all
+
+/sbin/modprobe nvme-fabrics
+/usr/sbin/nvme connect-nbft

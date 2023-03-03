@@ -1,0 +1,4 @@
+#!/bin/sh
+: "${VM_BRIDGE:='ovs_nvme'}"
+/sbin/ip link set "$1" up
+/usr/bin/ovs-vsctl add-port "${VM_BRIDGE}" "$1"

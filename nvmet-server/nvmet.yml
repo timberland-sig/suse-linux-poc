@@ -1,0 +1,25 @@
+---
+- name: Setup nvmet Server
+  hosts: nvme_servers
+  gather_facts: yes
+
+  pre_tasks:
+    - name: construct list of disk serial numbers for nvmet
+      ansible.builtin.set_fact:
+        # This creates a list ["virtio-nvme_v01", "virtio-nvme_v02", ... ]
+        # The nvmet role will look up the matching devices for these IDs.
+        nvme_disk_ids: >-
+          [{% for x in range(max_namespaces) %}
+          "{{ device_id_format.format(x + 1) }}"
+           {{ "," if loop.revindex != 1 else "" }}
+          {% endfor %}]
+
+    - name: update zypper cache
+      become: yes
+      ansible.builtin.zypper:
+        name: filesystem
+        state: present
+        update_cache: yes
+
+  roles:
+    - role: nvmet

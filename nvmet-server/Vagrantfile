@@ -1,0 +1,67 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Number of namespaces to serve from the nvmet server.
+# This limits the number of boot clients (see group_vars/nvme_server)
+MAX_NAMESPACES = ENV["NVME_MAX_NAMESPACES"] ? ENV["NVME_MAX_NAMESPACES"].to_i : 2
+USE_OVS = ENV["NVME_USE_OVS"] ? ENV["NVME_USE_OVS"].to_i > 0 : false
+VLAN_ID = ENV["OVS_VLAN_ID"] ? ENV["OVS_VLAN_ID"] : "5"
+SERVER_NAME = ENV["SERVER_NAME"] ? ENV["SERVER_NAME"] : "vagrant-nvmet"
+
+Vagrant.configure("2") do |config|
+  
+  config.vm.define SERVER_NAME do |server|
+    server.vm.box = "opensuse/Leap-15.4.x86_64"
+    server.vm.hostname = SERVER_NAME
+    server.vm.provider :libvirt do |libvirt|
+      libvirt.memory = 2048
+    end
+
+    # A sample libvirt-managed host-only network
+    server.vm.network :private_network,
+                      :libvirt__network_name => "br_nvme"
+
+    if USE_OVS
+      # A sample OpenVSwitch network
+      server.vm.network :public_network,
+                        :type => "network",
+                        :ovs => true,
+                        :network_name => "ovs_nvme",
+                        :portgroup => "pg0"
+      # Tagged network
+      server.vm.network :public_network,
+                        :type => "network",
+                        :ovs => true,
+                        :network_name => "ovs_nvme",
+                        :portgroup => "pg" + VLAN_ID
+    end
+
+    # Additional disks to serve as NVMeoF namespaces
+    # The "serial" string will be used by ansible to match devices
+    # for the namespace exports
+    server.vm.provider :libvirt do |libvirt|
+      (1..MAX_NAMESPACES).each do |disk|
+        libvirt.storage :file,
+                        :size => '20G',
+                        :allow_existing => true,
+                        :serial => 'nvme_v%02d' % disk
+      end
+    end
+  end
+
+  # Defaults for the vagrant-libvirt provider
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.qemu_use_session = false
+    libvirt.driver = "kvm"
+    libvirt.cpus = 2
+  end
+
+  # Provision the system with ansible
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "nvmet.yml"
+    ansible.groups = {
+      "nvme_servers" => [SERVER_NAME],
+    }
+  end
+
+end

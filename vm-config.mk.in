@@ -1,0 +1,38 @@
+### CLIENT VM SETTINGS ###
+
+# Name of the VM. Different names will get different UUIDs
+VM_NAME := leap
+
+# display flags for to use with qemu.
+# e.g. VM_VGA_FLAGS := -vnc localhost:1
+VM_VGA_FLAGS :=
+
+# Type of virtual network (bridge or ovs; ovs only if NVME_USE_OVS is set)
+# run "make sudo-hint" for sudo configuration
+VM_NETWORK_TYPE := bridge
+
+# For testing VLAN, set VM_NETWORK_TYPE=ovs and VLAN_ID=$(OVS_VLAN_ID)
+# Otherwise, set to 0
+VLAN_ID := 0
+
+# The configuration file to use for NvmeOfCli.efi during boot (under config)
+# e.g. Static4, Dhcp6
+CONFIG := Static4
+
+# Set to 1 to use the host system as gateway.
+# If emtpy, the networks will be isolated.
+USE_GW :=
+
+### NVME SETTINGS
+
+# Set to 1 to use NVMe discovery
+DISCOVERY:=
+
+# If DISCOVERY is emtpy, subsystem number to use to construct subsystem NQN
+# If subsys <= NVME_MAX_NAMESPACES, this subsys will be auto-enabled for
+# the UUID of VM_NAME
+SUBSYS := 01
+
+### DISTRIBUTION-SPECIFIC SETTINGS for openSUSE Leap
+
+VERSION := 15.5

@@ -1,0 +1,13 @@
+HostNqn:nqn.2014-08.org.nvmexpress:uuid:d6f07002-7eb5-4841-a185-400e296afae4
+HostId:da191911-ea21-4ecc-bafe-216d8372dd31
+$Start
+AttemptName:Attempt1
+HostName:myname
+MacString:52:54:00:4F:97:E9
+Enabled:1
+IpMode:0
+InitiatorInfoFromDhcp:TRUE
+TargetInfoFromDhcp:TRUE
+ConnectTimeout:6000
+DnsMode:FALSE
+$End

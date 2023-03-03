@@ -1,0 +1,6 @@
+#!/bin/sh
+
+: "${VM_BRIDGE:='ovs_nvme'}"
+/usr/bin/ovs-vsctl del-port "${VM_BRIDGE}" "$1"
+/sbin/ip addr flush dev "$1"
+/sbin/ip link set "$1" down

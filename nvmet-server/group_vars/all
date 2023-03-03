@@ -1,0 +1,6 @@
+# -*-yaml-*-
+# always use python3 for openSUSE Leap
+ansible_python_interpreter: /usr/bin/python3
+
+# Work around vagrant bug using wrong variable name "ansible_user"
+ansible_ssh_user: '{{ ansible_user }}'
