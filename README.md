@@ -53,8 +53,8 @@ with firewalld.
     ip link add "$BRIDGE" type bridge stp_state 0
     ip link set "$BRIDGE" up
     ip addr add $NET.1/24 dev "$BRIDGE"
-    echo "allow $BRIDGE" >/etc/qemu/bridge.conf
-    firewall-cmd --zone trusted --add-interface=br_test
+    echo "allow $BRIDGE" >>/etc/qemu/bridge.conf
+    firewall-cmd --zone trusted --add-interface="$BRIDGE"
 
 Change into your working directory and create an empty disk image.
 
