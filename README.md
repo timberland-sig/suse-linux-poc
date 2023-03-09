@@ -104,7 +104,7 @@ Change back to your working directory, download and unpack the NVMe-oF enabled
 EDK2 firmware, and make a copy of the UEFI variable store[^ovmf_url]:
 
     cd $DIR
-    curl -s -L -o ovmf.zip https://github.com/timberland-sig/edk2/releases/download/release-3f693ec/timberland-ovmf-release-3f693ec.zip
+    curl -s -L -o ovmf.zip https://github.com/timberland-sig/edk2/releases/download/release-9e63dc0/timberland-ovmf-release-9e63dc0.zip
     unzip ovmf.zip
 	cp OVMF_VARS.fd vm_vars.fd
 

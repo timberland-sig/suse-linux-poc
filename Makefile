@@ -9,7 +9,7 @@ AUTOINST :=
 NAME_PREFIX := nvmeof-
 
 # URL for downloading OVMF image
-OVMF_URL := https://github.com/timberland-sig/edk2/releases/download/release-3f693ec/timberland-ovmf-release-3f693ec.zip
+OVMF_URL := https://github.com/timberland-sig/edk2/releases/download/release-9e63dc0/timberland-ovmf-release-9e63dc0.zip
 
 # Defaults to avoid syntax errors while config.mk doesn't exist
 OVS_VLAN_ID := 1
@@ -102,6 +102,7 @@ SCRIPTS += autoinst.xml
 endif
 
 EFI_EXES := NvmeOfCli.efi VConfig.efi
+.PRECIOUS: $(EFI_EXES:%=efitools/%)
 
 # distribution name to use for driver update disk, see mkdud man page
 DIST := leap$(VERSION)
@@ -163,7 +164,7 @@ ifneq ($(ALL_CFG),$(file <current_config))
 .PHONY: current_config
 endif
 
-efitools/NvmeOfCli.efi: ovmf/NvmeOfCli.efi
+efitools/%.efi: ovmf/%.efi
 	$(Q)ln -f $< $@
 
 efidisk/%.efi: efitools/%.efi efidisk
@@ -303,7 +304,7 @@ timberland-ovmf.zip:
 	@echo === downloading OVMF firmware image from $(OVMF_URL)
 	$(Q)wget -q -O timberland-ovmf.zip $(OVMF_URL)
 
-ovmf/NvmeOfCli.efi ovmf/OVMF_CODE.fd ovmf/OVMF_VARS.fd: timberland-ovmf.zip | ovmf
+ovmf/NvmeOfCli.efi ovmf/VConfig.efi ovmf/OVMF_CODE.fd ovmf/OVMF_VARS.fd: timberland-ovmf.zip | ovmf
 	$(Q)unzip -d ovmf -o -DD timberland-ovmf.zip
 
 OVMF:	ovmf/OVMF_CODE.fd
