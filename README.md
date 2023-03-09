@@ -52,14 +52,14 @@ with firewalld.
 
     ip link add "$BRIDGE" type bridge stp_state 0
     ip link set "$BRIDGE" up
-    ip addr add $NET.1/24 dev "$BRIDGE"
+    ip addr add "$NET.1/24" dev "$BRIDGE"
     echo "allow $BRIDGE" >>/etc/qemu/bridge.conf
     firewall-cmd --zone trusted --add-interface="$BRIDGE"
 
 Change into your working directory and create an empty disk image.
 
-    mkdir -p $DIR
-    cd $DIR
+    mkdir -p "$DIR"
+    cd "$DIR"
     truncate -s 20G "$DISK"
 
 ### Configuring the NVMe Target
@@ -69,8 +69,8 @@ disk you just created. Allow any host to connect[^simple].
 
     modprobe nvmet nvmet-tcp
     cd /sys/kernel/config/nvmet/subsystems
-    mkdir $NQN
-    cd $NQN
+    mkdir "$NQN"
+    cd "$NQN"
     echo 1 > attr_allow_any_host
     mkdir namespaces/1
     echo "$DISK" > namespaces/1/device_path
@@ -86,14 +86,14 @@ previously created subsystem to it.
     cd 1
     echo tcp > addr_trtype
     echo ipv4 > addr_adrfam
-    echo $NET.1 > addr_traddr
+    echo "$NET.1" > addr_traddr
     echo 4420 > addr_trsvcid
     ln -s "/sys/kernel/config/nvmet/subsystems/$NQN" subsystems
 
 Your NVMe target is now operational. You can test it like this:
 
     modprobe nvme-fabrics
-    nvme discover -t tcp -a $NET.1 -s 4420
+    nvme discover -t tcp -a "$NET.1" -s 4420
 
 This command should display two entries, one of the referencing the NQN
 defined above.
@@ -103,16 +103,16 @@ defined above.
 Change back to your working directory, download and unpack the NVMe-oF enabled
 EDK2 firmware, and make a copy of the UEFI variable store[^ovmf_url]:
 
-    cd $DIR
+    cd "$DIR"
     curl -s -L -o ovmf.zip https://github.com/timberland-sig/edk2/releases/download/release-9e63dc0/timberland-ovmf-release-9e63dc0.zip
     unzip ovmf.zip
 	cp OVMF_VARS.fd vm_vars.fd
 
-The ZIP archive contains 3 files: `OVMF_CODE.fd` (the actual firmware image),
-`OVMF_VARS.fd` (an empty UEFI non-volatile variable store), and
+The ZIP archive contains 4 files: `OVMF_CODE.fd` (the actual firmware image),
+`OVMF_VARS.fd` (an empty UEFI non-volatile variable store),
 `NvmeOfCli.efi` (the EFI utilitiy used to load an NVMe-oF boot attempt
-configuration into UEFI variables). Move the `NvmeOfCli.efi` tool into a separate
-directory.
+configuration into UEFI variables), and `VConfig.efi`, which you don't need.
+Move the `NvmeOfCli.efi` tool into a separate directory.
 
     mkdir efi
     mv NvmeOfCli.efi efi
@@ -164,7 +164,7 @@ commonly used options[^vga]:
       -nographic -device virtio-rng -boot menu=on,splash-time=2000 \
       -drive if=pflash,format=raw,readonly=on,file=OVMF_CODE.fd \
       -drive if=pflash,format=raw,file=vm_vars.fd \
-      -netdev bridge,id=n0,br=$BRIDGE -device virtio-net-pci,netdev=n0,mac=$MAC"
+      -netdev bridge,id=n0,br=\"$BRIDGE\" -device virtio-net-pci,netdev=n0,mac=\"$MAC\""
 
 Run this VM with the `efi` directory as a small pseudo-disk.
 **Hit `ESC` quickly after typing the following command, to skip PXE boot.
@@ -327,7 +327,7 @@ procedure, the configured target ports and subsystems will be printed to the scr
 
 To test the server, run (as root)
 
-    nvme discover -t tcp -a 192.168.49.10  -s 4420 -q nqn.2014-08.org.nvmexpress:uuid:$UUID
+    nvme discover -t tcp -a 192.168.49.10  -s 4420 -q "nqn.2014-08.org.nvmexpress:uuid:$UUID"
 
 where UUID has been printed by the previous command, or can be found in the
 file `uuid-leap.mk`[^hostnqn].
