@@ -1,0 +1,174 @@
+<?xml version="1.0"?>
+<!DOCTYPE profile>
+<profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
+  <general t="map">
+    <mode t="map">
+      <confirm t="boolean">false</confirm>
+      <second_stage t="boolean">false</second_stage>
+      <!-- skip ntp_sync_time_before_installation -->
+    </mode>
+  </general>
+  <kdump>
+    <add_crash_kernel config:type="boolean">false</add_crash_kernel>
+  </kdump>
+  <add-on t="map">
+    <add_on_products t="list">
+      <listentry t="map">
+        <media_url>cd:/?devices=/dev/sr0</media_url>
+        <product>sle-module-basesystem</product>
+        <product_dir>/Module-Basesystem</product_dir>
+      </listentry>
+      <listentry t="map">
+        <media_url>cd:/?devices=/dev/sr0</media_url>
+        <product>sle-module-server-applications</product>
+        <product_dir>/Module-Server-Applications</product_dir>
+      </listentry>
+    </add_on_products>
+  </add-on>
+  <bootloader t="map">
+    <global t="map">
+      <append>preempt=full mitigations=auto security=apparmor console=ttyS0,115200 console=tty0</append>
+      <cpu_mitigations>auto</cpu_mitigations>
+      <gfxmode>auto</gfxmode>
+      <hiddenmenu>false</hiddenmenu>
+      <os_prober>false</os_prober>
+      <secure_boot>true</secure_boot>
+      <terminal>gfxterm</terminal>
+      <timeout t="integer">8</timeout>
+      <update_nvram>true</update_nvram>
+      <xen_kernel_append>vga=gfx-1024x768x16</xen_kernel_append>
+    </global>
+    <loader_type>grub2-efi</loader_type>
+  </bootloader>
+  <networking t="map">
+    <dhcp_options t="map">
+      <dhclient_client_id/>
+      <dhclient_hostname_option>AUTO</dhclient_hostname_option>
+    </dhcp_options>
+    <dns t="map">
+      <dhcp_hostname t="boolean">true</dhcp_hostname>
+      <hostname>nbftboot</hostname>
+      <resolv_conf_policy>auto</resolv_conf_policy>
+    </dns>
+    <ipv6 t="boolean">false</ipv6>
+    <keep_install_network t="boolean">false</keep_install_network>
+    <managed t="boolean">false</managed>
+    <routing t="map">
+      <ipv4_forward t="boolean">false</ipv4_forward>
+      <ipv6_forward t="boolean">false</ipv6_forward>
+    </routing>
+  </networking>
+  <partitioning t="list">
+    <drive t="map">
+      <device>/dev/nvme0n1</device>
+      <initialize t="boolean">true</initialize>
+      <disklabel>gpt</disklabel>
+      <enable_snapshots t="boolean">true</enable_snapshots>
+      <partitions t="list">
+        <partition t="map">
+          <create t="boolean">true</create>
+          <filesystem t="symbol">vfat</filesystem>
+          <format t="boolean">true</format>
+          <fstopt>utf8</fstopt>
+          <mount>/boot/efi</mount>
+          <mountby t="symbol">uuid</mountby>
+          <partition_id t="integer">259</partition_id>
+          <size>200M</size>
+        </partition>
+        <partition t="map">
+          <create t="boolean">true</create>
+          <create_subvolumes t="boolean">true</create_subvolumes>
+          <filesystem t="symbol">btrfs</filesystem>
+          <format t="boolean">true</format>
+          <mount>/</mount>
+          <mountby t="symbol">uuid</mountby>
+          <partition_id t="integer">131</partition_id>
+          <size>max</size>
+          <subvolumes_prefix>@</subvolumes_prefix>
+        </partition>
+      </partitions>
+      <type t="symbol">CT_DISK</type>
+      <use>all</use>
+    </drive>
+  </partitioning>
+  <proxy t="map">
+    <enabled t="boolean">false</enabled>
+  </proxy>
+  <services-manager t="map">
+    <default_target>multi-user</default_target>
+    <services t="map">
+      <enable t="list">
+        <service>YaST2-Firstboot</service>
+        <service>YaST2-Second-Stage</service>
+        <service>apparmor</service>
+        <service>auditd</service>
+        <service>wickedd-dhcp4</service>
+        <service>wickedd-nanny</service>
+        <service>wicked</service>
+        <service>irqbalance</service>
+        <service>kbdsettings</service>
+        <service>purge-kernels</service>
+        <service>sshd</service>
+        <service>systemd-remount-fs</service>
+      </enable>
+    </services>
+  </services-manager>
+  <software t="map">
+    <install_recommended t="boolean">false</install_recommended>
+    <instsource/>
+    <packages t="list">
+      <package>wicked</package>
+      <package>snapper</package>
+      <package>sles-release</package>
+      <package>sle-module-server-applications-release</package>
+      <package>sle-module-basesystem-release</package>
+      <package>shim</package>
+      <package>openssh</package>
+      <package>nvme-cli</package>
+      <package>mokutil</package>
+      <package>grub2-x86_64-efi</package>
+      <package>glibc</package>
+      <package>glibc-locale-base</package>
+      <package>btrfsprogs</package>
+      <package>iproute2</package>
+      <package>iputils</package>
+      <package>less</package>
+      <package>irqbalance</package>
+      <package>audit</package>
+    </packages>
+    <patterns t="list">
+      <pattern>apparmor</pattern>
+      <pattern>base</pattern>
+      <pattern>minimal_base</pattern>
+    </patterns>
+    <products t="list">
+      <product>SLES</product>
+    </products>
+  </software>
+  <ssh_import t="map">
+    <copy_config t="boolean">false</copy_config>
+    <import t="boolean">false</import>
+  </ssh_import>
+  <users t="list">
+    <user t="map">
+      <authorized_keys t="list"/>
+      <encrypted t="boolean">true</encrypted>
+      <fullname>root</fullname>
+      <gid>0</gid>
+      <home>/root</home>
+      <home_btrfs_subvolume t="boolean">false</home_btrfs_subvolume>
+      <password_settings t="map">
+        <expire/>
+        <flag/>
+        <inact/>
+        <max/>
+        <min/>
+        <warn/>
+      </password_settings>
+      <shell>/bin/bash</shell>
+      <uid>0</uid>
+      <user_password>$6$Fhi9qo0mVdC5/5pS$3DTqbDA3S9MWHn0.hXhH3sb59yspcpZNx8xMspCAYheg0LVRyEOgs.cVkvZ/Igcu2PXfCX4uril65t7ZM1NAH/</user_password>
+      <username>root</username>
+    </user>
+  </users>
+</profile>

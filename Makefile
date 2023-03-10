@@ -67,11 +67,6 @@ endif
 
 ### END CUSTOMIZATION SECTION ###
 
-# ISO image for installation (use a symlink?)
-# Obtain from https://download.opensuse.org/distribution/leap/15.4/iso/openSUSE-Leap-15.4-DVD-x86_64-Media.iso
-ISO_URL := https://download.opensuse.org/distribution/leap/$(VERSION)/iso
-ISO := openSUSE-Leap-$(VERSION)-DVD-x86_64-Media.iso
-
 ##  "Driver" update disk configuration for (open)SUSE
 # See https://github.com/openSUSE/mkdud/blob/master/HOWTO.md
 # For 15.5, no DUD is needed
@@ -90,6 +85,19 @@ DUD :=
 endif
 endif
 
+ifeq ($(BASE_DIST),sle)
+SP := $(lastword $(subst ., ,$(VERSION)))
+VER := $(firstword $(subst ., ,$(VERSION)))
+ORIG_ISO := SLE-$(VER)-SP$(SP)-Full-x86_64-Media1.iso
+else
+# Leap ISO image can be downloaded
+ISO_URL := https://download.opensuse.org/distribution/leap/$(VERSION)/iso
+ORIG_ISO := openSUSE-Leap-$(VERSION)-DVD-x86_64-Media.iso
+SP :=
+VER := $(VERSION)
+endif
+ISO := install.iso
+
 # URL to download packages from
 PACKAGE_URL := https://download.opensuse.org/repositories/home:/mwilck:/timberland/$(VERSION)
 # Local directory with update packages
@@ -105,7 +113,7 @@ EFI_EXES := NvmeOfCli.efi VConfig.efi
 .PRECIOUS: $(EFI_EXES:%=efitools/%)
 
 # distribution name to use for driver update disk, see mkdud man page
-DIST := leap$(VERSION)
+DIST := $(BASE_DIST)$(VER)
 
 # Size of EFI disk
 EFIDISK_MB := 2
@@ -217,9 +225,18 @@ efidisk.img:	efidisk/Config
 	$(Q)mformat -v EFI-NBFT -h 2 -s 1024 -t $(EFIDISK_MB) -i $@ "::"
 	$(Q)mcopy -i $@ efidisk/* "::"
 
-$(ISO):
-	@echo === Downloading $(ISO), please stand by...
-	$(Q)wget -q $(ISO_URL)/$(ISO)
+ifeq ($(BASE_DIST),sle)
+$(ORIG_ISO):
+	@echo === Please download $(ORIG_ISO) and copy or link it to this directory
+	@false
+else
+$(ORIG_ISO):
+	@echo === Downloading $(ORIG_ISO), please stand by...
+	$(Q)wget -q $(ISO_URL)/$(ORIG_ISO)
+endif
+
+$(ISO):	$(ORIG_ISO)
+	$(Q)ln -s $(ORIG_ISO) $(ISO)
 
 vm/$(VM_NAME)-vars.bin: ovmf/OVMF_VARS.fd | vm $(EFIDISK)
 	@echo === building $@ because of $?
@@ -328,13 +345,16 @@ mkdud:
 	$(Q)wget https://raw.githubusercontent.com/openSUSE/mkdud/master/mkdud
 	$(Q)chmod a+x ./mkdud
 
+autoinst.xml:	autoinst-$(BASE_DIST).xml
+	$(Q)ln $< $@
+
 $(DUD): mkdud $(wildcard $(PACKAGEDIR)/*.x86_64.rpm) $(KEYS) $(SCRIPTS) current_config | $(PACKAGEDIR)
 	@echo === building $@ because of $?
 	$(Q)rm -f $@
 	$(Q)./mkdud --create $@ \
 		--name="Update disk for NBFT boot" \
 		--install=instsys,repo \
-		--dist=$(DIST) \
+		--dist=$(DIST) $(if $(SP),--condition=ServicePack$(SP)) \
 		--format=iso \
 		--volume=OEMDRV \
 		$(PACKAGES:%=$(PACKAGEDIR)/%-[0-9]*.x86_64.rpm) \
@@ -356,7 +376,7 @@ libvirt-clean:x
 clean:	net-down vars-clean
 	$(Q)rm -rf efidisk packages keys ovmf
 	$(Q)rm -f efidisk.img $(DUD) *~ vm/*~ vm/*.xml current_config timberland-ovmf.zip
-	$(Q)rm -f mkdud efitools/NvmeOfCli.efi
+	$(Q)rm -f mkdud efitools/NvmeOfCli.efi install.iso autoinst.xml
 	$(Q)rm -f nvmet-server/group_vars/nvme_servers vm-config.mk env-config.mk
 
 uuid-clean:	clean

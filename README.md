@@ -349,7 +349,8 @@ To test the server, run (as root)
     nvme discover -t tcp -a 192.168.49.10  -s 4420 -q "nqn.2014-08.org.nvmexpress:uuid:$UUID"
 
 where UUID has been printed by the previous command, or can be found in the
-file `uuid-leap.mk`[^hostnqn].
+file `uuid-$(VM_NAME).mk`[^hostnqn], where `VM_NAME` is set in `vm-config.mk`
+and defaults to `leap`.
 
 [^hostnqn]: Without the `-q` argument, `nvme discover` will print no
     subsystem, because ACLs on the server restrict access.
@@ -364,11 +365,18 @@ file `uuid-leap.mk`[^hostnqn].
 The settings for the client are in `vm-config.mk`. Leaving the defaults as-is
 should work for your first installation. You can change the settings later.
 
-The PoC uses openSUSE Leap. Leap 15.4 and 15.5 are supported (`VERSION` in
+The PoC uses openSUSE Leap or SUSE Linux Enterprise (SLE)
+(`BASE_DIST` in `vm-config.mk`).
+Versions 15.4 and 15.5 are supported (`VERSION` in
 `vm-config.mk`). If you have an installation medium (DVD) for the configured
-openSUSE Leap version around, copy or link it to
-`openSUSE-Leap-$(VERSION)-DVD-x86_64-Media.iso` in the top directory.
-Otherwise, the next command will download the image from the internet.
+openSUSE distribution around, copy or link it to `install.iso` in the top directory.
+Otherwise, the next command will download the image from the internet[^iso].
+
+[^iso]: The automatic download works for openSUSE leap only. For SLE, you need
+    to obtain an iso image from the [SUSE download site](https://www.suse.com/download/sles/
+	and create a symbolic link in the top directory pointing to this image.
+	For SLE15-SP5, the name of the symbolic link should be
+	`SLE-15-SP5-Full-x86_64-Media1.iso`.
 
 The following command will download and build all necessary artifacts and start the VM.
 Most importantly, it will build a small EFI disk with the `NvmeOfCli.efi`
@@ -601,16 +609,16 @@ TBD.
 This part depends strongly on the distribution and the capabilities of the
 installation program.
 
-### openSUSE Leap
+### openSUSE Leap and SUSE Linux Enterprise Server (SLE)
 
-openSUSE Leap 15.5 has native support for installing on NVMe-oF/TCP in its
-installation programs (`linuxrc` and `YaST`). Presence of an NBFT table is
-automatically detected.
+openSUSE Leap 15.5 and SLE 15-SP5 have native support for installing on
+NVMe-oF/TCP in their installation programs (`linuxrc` and `YaST`). Presence of
+an NBFT table is automatically detected.
 
-On openSUSE Leap 15.4, he driver update disk (DUD) concept[^dud] is leveraged
+On openSUSE Leap 15.4 and SLE15-SP4, the driver update disk (DUD) concept[^dud] is leveraged
 to install updated packages for **nvme-cli**, **dracut** and their
-dependencies. These packages are not official Leap 15.4 packages, but they
-are compiled from the same sources as the native Leap 15.5 packages.
+dependencies. These packages are not official 15.4 packages, but they
+are compiled from the same sources as the native 15.5 packages.
 Moroeover, the 15.4 DUD contains a [shell script](update.pre), which
 is run by the installer before performing the actual installation. The
 script parses the NBFT, brings up the NBFT interface(s), and
