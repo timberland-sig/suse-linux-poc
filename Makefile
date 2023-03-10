@@ -35,14 +35,14 @@ VM_BRIDGE ?= br_nvme
 ifneq ($(subst 4,X,$(CONFIG)),$(CONFIG))
 SUBNET := $(IP4_PREFIX).$(shell printf %d $$(($(SUBNET_BASE)-1))).
 else
-SUBNET := $(ULA_PREFIX):$(shell printf %x $$(($(SUBNET_BASE)-1)))::
+SUBNET := $(ULA_PREFIX):$(shell printf %d $$(($(SUBNET_BASE)-1)))::
 endif
 else
 VM_BRIDGE ?= ovs_nvme
 ifneq ($(subst 4,X,$(CONFIG)),$(CONFIG))
 SUBNET := $(IP4_PREFIX).$(shell printf %d $$(($(SUBNET_BASE)+$(VLAN_ID)))).
 else
-SUBNET := $(ULA_PREFIX):$(shell printf %x $$(($(SUBNET_BASE)+$(VLAN_ID))))::
+SUBNET := $(ULA_PREFIX):$(shell printf %d $$(($(SUBNET_BASE)+$(VLAN_ID))))::
 endif
 endif
 
