@@ -281,21 +281,40 @@ The libvirt and (if used) the OpenVSwitch daemon must be running.
 
 (If you intend to run everything as root, skip this section).
 
-While much of the Proof of Concept can be run rootless, some commands require
-superuser priviliges, in particular:
+While most of this Proof of Concept can be run rootless, some commands require
+superuser priviliges, in particular network setup. Your user ID should have
+permissions to run virtual machines both under plain qemu[^qemu_ovs] and under
+libvirt. On most modern Linux distributions, this is granted by
+adding the user to the groups `qemu` (or `kvm`) and `libvirt`, respectively.
 
-* network setup (bridges, IP configuration, etc.)
-* running qemu with OVS interfaces.
+[^qemu_ovs]: qemu will only be run under your user ID if no OpenVSwitch bridge
+	is used, because bringing up openvswitch interfaces doesn't work with
+	rootless qemu.
 
-Your user ID should also be able to run virtual machines with both qemu and
-libvirt. On most modern Linux distributions, this is granted by adding the
-user to the groups `qemu` (or `kvm`) and `libvirt`, respectively.
+Thr command **make help-rootless** prints configuration hints
+to enable passwordless execution for those commands
+that need root permissions.
+The output looks like this, with some variables substituted to
+match your environment:
 
-Run **make help-rootless** to print additional configuration hints for your
-environment, to enable passwordless root access for those commands
-that need it. Apply the suggestions. You don't have to apply the `sudoers`
-configuration, but if you don't, you may have to type the root password
-frequently. *Adding the entry in `/etc/qemu/bridge.conf` is mandatory*.
+    ###  User joe must be able control qemu and libvirt
+    Usually that means joe should be member of the groups "qemu" and "libvirt"
+    
+    ### Recommended sudoers configuration (add with visudo):
+    User_Alias NVME_USERS = joe
+    Host_Alias NVME_HOSTS = workstation
+    Cmd_Alias NVME_CMDS = /home/joe/nvme-poc/qemu.sh ""
+    Cmd_Alias NVME_NET = /home/joe/nvme-poc/network/setup.sh "", /home/joe/nvme-poc/network/cleanup.sh ""
+    Defaults!NVME_CMDS env_keep += "VM_NAME VM_UUID VM_OVMF_IMG VM_BRIDGE VM_ISO VM_DUD VM_VGA_FLAGS V"
+    Defaults!NVME_NET env_keep += "NVME_USE_OVS V"
+    NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_CMDS
+    NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_NET
+    ### End of sudoers config ###
+    
+    ### /etc/qemu/bridge.conf configuration
+    allow br_nvme
+
+Review these suggestions, and apply them as you see fit.
 
 ## Setting up the Environment
 
