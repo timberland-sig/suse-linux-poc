@@ -33,6 +33,9 @@ DISCOVERY:=
 # the UUID of VM_NAME
 SUBSYS := 01
 
-### DISTRIBUTION-SPECIFIC SETTINGS for openSUSE Leap
+### DISTRIBUTION-SPECIFIC SETTINGS
 
+# Set this to "leap" or "sle"
+BASE_DIST := leap
+# Always use leap versioning scheme, e.g. 15.4 here
 VERSION := 15.5
