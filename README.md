@@ -247,6 +247,22 @@ proof-of-concept setup instead, as described in [the following section](#full-pr
 
 # Full Proof-of-Concept
 
+## Quick Start for the Impatient
+
+ * Check the [Prerequisites](#prerequisites).
+ * Run **make help-rootless** and apply the [suggested settings](#enabling-rootless-operation).
+ * Run **make server-up**.
+ * Run **make AUTOINST=1 inst**, hit ESC quickly after VM startup.
+ * Open Boot Manager and start `EFI Internal Shell`, let `startup.nsh`
+   run. The boot menu will be displayed.
+ * Stop the VM with `Ctrl-b x`, it will restart, and the Installation menu
+   will be displayed
+ * Edit the `Installation` entry, and add `console=ttyS0` to the kernel
+   command line.
+ * Start the installationx.
+ * After installation, the installed VM will boot from NVMe-oF. 
+   The root password is "timberland".
+
 ## Features
 
 * Operated by simple `make` commands
