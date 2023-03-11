@@ -247,6 +247,22 @@ proof-of-concept setup instead, as described in [the following section](#full-pr
 
 # Full Proof-of-Concept
 
+## Quick Start for the Impatient
+
+ * Check the [Prerequisites](#prerequisites).
+ * Run **make help-rootless** and apply the [suggested settings](#enabling-rootless-operation).
+ * Run **make server-up**.
+ * Run **make AUTOINST=1 inst**, hit ESC quickly after VM startup.
+ * Open Boot Manager and start `EFI Internal Shell`, let `startup.nsh`
+   run. The boot menu will be displayed.
+ * Stop the VM with `Ctrl-b x`, it will restart, and the Installation menu
+   will be displayed
+ * Edit the `Installation` entry, and add `console=ttyS0` to the kernel
+   command line.
+ * Start the installationx.
+ * After installation, the installed VM will boot from NVMe-oF. 
+   The root password is "timberland".
+
 ## Features
 
 * Operated by simple `make` commands
@@ -281,21 +297,40 @@ The libvirt and (if used) the OpenVSwitch daemon must be running.
 
 (If you intend to run everything as root, skip this section).
 
-While much of the Proof of Concept can be run rootless, some commands require
-superuser priviliges, in particular:
+While most of this Proof of Concept can be run rootless, some commands require
+superuser priviliges, in particular network setup. Your user ID should have
+permissions to run virtual machines both under plain qemu[^qemu_ovs] and under
+libvirt. On most modern Linux distributions, this is granted by
+adding the user to the groups `qemu` (or `kvm`) and `libvirt`, respectively.
 
-* network setup (bridges, IP configuration, etc.)
-* running qemu with OVS interfaces.
+[^qemu_ovs]: qemu will only be run under your user ID if no OpenVSwitch bridge
+	is used, because bringing up openvswitch interfaces doesn't work with
+	rootless qemu.
 
-Your user ID should also be able to run virtual machines with both qemu and
-libvirt. On most modern Linux distributions, this is granted by adding the
-user to the groups `qemu` (or `kvm`) and `libvirt`, respectively.
+Thr command **make help-rootless** prints configuration hints
+to enable passwordless execution for those commands
+that need root permissions.
+The output looks like this, with some variables substituted to
+match your environment:
 
-Run **make help-rootless** to print additional configuration hints for your
-environment, to enable passwordless root access for those commands
-that need it. Apply the suggestions. You don't have to apply the `sudoers`
-configuration, but if you don't, you may have to type the root password
-frequently. *Adding the entry in `/etc/qemu/bridge.conf` is mandatory*.
+    ###  User joe must be able control qemu and libvirt
+    Usually that means joe should be member of the groups "qemu" and "libvirt"
+    
+    ### Recommended sudoers configuration (add with visudo):
+    User_Alias NVME_USERS = joe
+    Host_Alias NVME_HOSTS = workstation
+    Cmd_Alias NVME_CMDS = /home/joe/nvme-poc/qemu.sh ""
+    Cmd_Alias NVME_NET = /home/joe/nvme-poc/network/setup.sh "", /home/joe/nvme-poc/network/cleanup.sh ""
+    Defaults!NVME_CMDS env_keep += "VM_NAME VM_UUID VM_OVMF_IMG VM_BRIDGE VM_ISO VM_DUD VM_VGA_FLAGS V"
+    Defaults!NVME_NET env_keep += "NVME_USE_OVS V"
+    NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_CMDS
+    NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_NET
+    ### End of sudoers config ###
+    
+    ### /etc/qemu/bridge.conf configuration
+    allow br_nvme
+
+Review these suggestions, and apply them as you see fit.
 
 ## Setting up the Environment
 
@@ -330,7 +365,8 @@ To test the server, run (as root)
     nvme discover -t tcp -a 192.168.49.10  -s 4420 -q "nqn.2014-08.org.nvmexpress:uuid:$UUID"
 
 where UUID has been printed by the previous command, or can be found in the
-file `uuid-leap.mk`[^hostnqn].
+file `uuid-$(VM_NAME).mk`[^hostnqn], where `VM_NAME` is set in `vm-config.mk`
+and defaults to `leap`.
 
 [^hostnqn]: Without the `-q` argument, `nvme discover` will print no
     subsystem, because ACLs on the server restrict access.
@@ -345,11 +381,17 @@ file `uuid-leap.mk`[^hostnqn].
 The settings for the client are in `vm-config.mk`. Leaving the defaults as-is
 should work for your first installation. You can change the settings later.
 
-The PoC uses openSUSE Leap. Leap 15.4 and 15.5 are supported (`VERSION` in
+The PoC uses openSUSE Leap or SUSE Linux Enterprise (SLE)
+(`BASE_DIST` in `vm-config.mk`).
+Versions 15.4 and 15.5 are supported (`VERSION` in
 `vm-config.mk`). If you have an installation medium (DVD) for the configured
-openSUSE Leap version around, copy or link it to
-`openSUSE-Leap-$(VERSION)-DVD-x86_64-Media.iso` in the top directory.
-Otherwise, the next command will download the image from the internet.
+openSUSE distribution around, copy or link it to `install.iso` in the top directory.
+Otherwise, the next command will download the image from the internet[^iso].
+
+[^iso]: The automatic download works for openSUSE leap only. For SLE, you need
+    to obtain an iso image from the [SUSE download site](https://www.suse.com/download/sles/
+	and create a symbolic link `install.iso` in the top directory pointing to
+    this image.
 
 The following command will download and build all necessary artifacts and start the VM.
 Most importantly, it will build a small EFI disk with the `NvmeOfCli.efi`
@@ -473,10 +515,25 @@ Unlike IPv4, the network configuration is not taken from the `CONFIG` file. It m
 configured in the EFI UI instead: `Device Manager` → `Network Device List` →
 MAC address → `IPv6 Network Configuration` → `Enter Configuration Menu`; then
 set either `Policy: automatic` (for DHCP or IPv6 SLAAC), or set `Policy:
-manual` and add IPv6 addresses under `Advanced Configuration`.
+manual` and add IPv6 address and gateway under `Advanced Configuration`.
 
-Note that the `CONFIG` file is still necessary for configuring target
-parameters.
+Alternatively, this can be configured in the EFI shell.
+The most reliable way to bring up an NVMeoF boot with IPv6 is as follows
+(assuming the standard bridge with subnet `fddf:d:f:49::` is in use):
+
+    rm vm/$VM_NAME-vars.fd    # VM_NAME from config.mk
+    make qemu
+	# hit ESC, disable PXE boot options 
+	# boot EFI shell, hit ESC (*do not* run startup.nsh)
+	# in efi shell, use ifconfig6 like above:
+	ifconfig6 -s eth0 man host fddf:d:f:49::50/64 gw fddf:d:f:49::1
+	# or for DHCP/SLAAC: ifconfig6 -s eth0 auto
+	reset   # or ctrl-b x for poweroff
+	# hit ESC again when the VM reboots
+	# boot EFI shell and run startup.nsh this time
+
+Note that running `startup.nsh` and reading the `CONFIG` file is still 
+necessary for configuring NVMe-oF target parameters.
 
 ### Advanced Configuration
 
@@ -582,16 +639,16 @@ TBD.
 This part depends strongly on the distribution and the capabilities of the
 installation program.
 
-### openSUSE Leap
+### openSUSE Leap and SUSE Linux Enterprise Server (SLE)
 
-openSUSE Leap 15.5 has native support for installing on NVMe-oF/TCP in its
-installation programs (`linuxrc` and `YaST`). Presence of an NBFT table is
-automatically detected.
+openSUSE Leap 15.5 and SLE 15-SP5 have native support for installing on
+NVMe-oF/TCP in their installation programs (`linuxrc` and `YaST`). Presence of
+an NBFT table is automatically detected.
 
-On openSUSE Leap 15.4, he driver update disk (DUD) concept[^dud] is leveraged
+On openSUSE Leap 15.4 and SLE15-SP4, the driver update disk (DUD) concept[^dud] is leveraged
 to install updated packages for **nvme-cli**, **dracut** and their
-dependencies. These packages are not official Leap 15.4 packages, but they
-are compiled from the same sources as the native Leap 15.5 packages.
+dependencies. These packages are not official 15.4 packages, but they
+are compiled from the same sources as the native 15.5 packages.
 Moroeover, the 15.4 DUD contains a [shell script](update.pre), which
 is run by the installer before performing the actual installation. The
 script parses the NBFT, brings up the NBFT interface(s), and

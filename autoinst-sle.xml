@@ -11,6 +11,20 @@
   <kdump>
     <add_crash_kernel config:type="boolean">false</add_crash_kernel>
   </kdump>
+  <add-on t="map">
+    <add_on_products t="list">
+      <listentry t="map">
+        <media_url>cd:/?devices=/dev/sr0</media_url>
+        <product>sle-module-basesystem</product>
+        <product_dir>/Module-Basesystem</product_dir>
+      </listentry>
+      <listentry t="map">
+        <media_url>cd:/?devices=/dev/sr0</media_url>
+        <product>sle-module-server-applications</product>
+        <product_dir>/Module-Server-Applications</product_dir>
+      </listentry>
+    </add_on_products>
+  </add-on>
   <bootloader t="map">
     <global t="map">
       <append>preempt=full mitigations=auto security=apparmor console=ttyS0,115200 console=tty0</append>
@@ -36,7 +50,6 @@
       <hostname>nbftboot</hostname>
       <resolv_conf_policy>auto</resolv_conf_policy>
     </dns>
-    <ipv6 t="boolean">false</ipv6>
     <keep_install_network t="boolean">false</keep_install_network>
     <managed t="boolean">false</managed>
     <routing t="map">
@@ -105,9 +118,11 @@
     <packages t="list">
       <package>wicked</package>
       <package>snapper</package>
+      <package>sles-release</package>
+      <package>sle-module-server-applications-release</package>
+      <package>sle-module-basesystem-release</package>
       <package>shim</package>
       <package>openssh</package>
-      <package>openSUSE-release</package>
       <package>nvme-cli</package>
       <package>mokutil</package>
       <package>grub2-x86_64-efi</package>
@@ -118,15 +133,15 @@
       <package>iputils</package>
       <package>less</package>
       <package>irqbalance</package>
+      <package>audit</package>
     </packages>
     <patterns t="list">
       <pattern>apparmor</pattern>
       <pattern>base</pattern>
       <pattern>minimal_base</pattern>
-      <pattern>sw_management</pattern>
     </patterns>
     <products t="list">
-      <product>Leap</product>
+      <product>SLES</product>
     </products>
   </software>
   <ssh_import t="map">
