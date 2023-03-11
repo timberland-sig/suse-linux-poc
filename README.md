@@ -516,10 +516,25 @@ Unlike IPv4, the network configuration is not taken from the `CONFIG` file. It m
 configured in the EFI UI instead: `Device Manager` → `Network Device List` →
 MAC address → `IPv6 Network Configuration` → `Enter Configuration Menu`; then
 set either `Policy: automatic` (for DHCP or IPv6 SLAAC), or set `Policy:
-manual` and add IPv6 addresses under `Advanced Configuration`.
+manual` and add IPv6 address and gateway under `Advanced Configuration`.
 
-Note that the `CONFIG` file is still necessary for configuring target
-parameters.
+Alternatively, this can be configured in the EFI shell.
+The most reliable way to bring up an NVMeoF boot with IPv6 is as follows
+(assuming the standard bridge with subnet `fddf:d:f:49::` is in use):
+
+    rm vm/$VM_NAME-vars.fd    # VM_NAME from config.mk
+    make qemu
+	# hit ESC, disable PXE boot options 
+	# boot EFI shell, hit ESC (*do not* run startup.nsh)
+	# in efi shell, use ifconfig6 like above:
+	ifconfig6 -s eth0 man host fddf:d:f:49::50/64 gw fddf:d:f:49::1
+	# or for DHCP/SLAAC: ifconfig6 -s eth0 auto
+	reset   # or ctrl-b x for poweroff
+	# hit ESC again when the VM reboots
+	# boot EFI shell and run startup.nsh this time
+
+Note that running `startup.nsh` and reading the `CONFIG` file is still 
+necessary for configuring NVMe-oF target parameters.
 
 ### Advanced Configuration
 
