@@ -4,7 +4,7 @@
   - vagrant-libvirt, ansible, python-jmespath, python-netaddr
   - optional: openvswitch, xsltproc, mtools
   - depending on ansible version, ansible collections "ansible.posix"
-    and/or "community.general" may beed to be installed with ansible-galaxy
+    and/or "community.general" may need to be installed with ansible-galaxy
 
 ### Important make targets:
 
