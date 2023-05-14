@@ -10,6 +10,9 @@
 # openvswitch to be installed and running
 NVME_USE_OVS :=
 
+# Number of (regular) bridges to create
+NVME_N_BRIDGES := 1
+
 #### IP address ranges
 # Make sure this doesn't overlap with existing networks in your environment!
 # addresses will be constructed as follows (decimal arithmetic also for IPv6!)

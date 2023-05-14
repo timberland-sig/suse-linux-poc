@@ -8,6 +8,7 @@ USE_OVS = ENV["NVME_USE_OVS"] ? ENV["NVME_USE_OVS"].to_i > 0 : false
 VLAN_ID = ENV["OVS_VLAN_ID"] ? ENV["OVS_VLAN_ID"] : "5"
 SERVER_NAME = ENV["SERVER_NAME"] ? ENV["SERVER_NAME"] : "vagrant-nvmet"
 STORAGE_POOL = ENV["STORAGE_POOL"] ? ENV["STORAGE_POOL"] : "default"
+N_BRIDGES =  ENV["NVME_N_BRIDGES"] ? ENV["NVME_N_BRIDGES"].to_i : 1
 
 Vagrant.configure("2") do |config|
   
@@ -18,9 +19,11 @@ Vagrant.configure("2") do |config|
       libvirt.memory = 2048
     end
 
-    # A sample libvirt-managed host-only network
-    server.vm.network :private_network,
-                      :libvirt__network_name => "br_nvme"
+    (1..N_BRIDGES).each do |bridge|
+      # A sample libvirt-managed host-only network
+      server.vm.network :private_network,
+                        :libvirt__network_name => "br_nvme%d" % bridge
+    end
 
     if USE_OVS
       # A sample OpenVSwitch network

@@ -135,6 +135,7 @@ export VM_VGA_FLAGS
 export NVME_MAX_NAMESPACES
 export STORAGE_POOL
 export NVME_USE_OVS
+export NVME_N_BRIDGES
 export VLAN_ID
 export LIBVIRT_DEFAULT_URI
 export ULA_PREFIX
@@ -275,10 +276,10 @@ nvmet-server/group_vars/nvme_servers: uuid-$(VM_NAME).mk nvmet-server/group_vars
 	$(Q)sed -i 's/^max_namespaces:.*/max_namespaces: $(NVME_MAX_NAMESPACES)/' $@
 
 network/cleanup.sh:
+	@echo "=== Bringing up network"
 	$(Q)./network/setup.sh
 
 net-up: network/cleanup.sh
-	@echo "=== Bringing up network"
 
 nvmet-server/server-running: nvmet-server/group_vars/nvme_servers
 	@echo === bringing up nvmet server

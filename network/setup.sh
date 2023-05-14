@@ -25,13 +25,13 @@
 # Use e.g. for root-path assignments or static IPs
 : "${DNSMASQ_EXTRA_OPTS:=}"
 
+: "${NVME_N_BRIDGES:=2}"
 : "${BRIDGE:=br_nvme}"
-: "${BR_NET:=$IP4_PREFIX.$((SUBNET_BASE-1)).}"
 : "${BR_MASK:=24}"
-: "${BR_IPV6:=$ULA_PREFIX:$((SUBNET_BASE-1))::}"
 : "${BR_PREFIX6:=64}"
-# Set to gateway IP address (${BR_NET}1) to enable routing
-: "${BR_GATEWAY:=}"
+# Set to last element of gateway to enable routing
+# e.g. 5 for gateway 192.168.X.5 on all IPv4 networks
+: "${BR_GATEWAY_SUFFIX:=}"
 
 : "${OVS_BRIDGE:=ovs_nvme}"
 : "${OVS0_NET:=$IP4_PREFIX.$SUBNET_BASE.}"
@@ -64,17 +64,32 @@ push_cleanup() {
 $CLEANUP"
 }
 
+br_ipv4() {
+    echo "$IP4_PREFIX.$((SUBNET_BASE - $1))."
+}
+
+br_ipv6() {
+    echo "$ULA_PREFIX:$((SUBNET_BASE - $1))::"
+}
+
 # Used to generate the ansible input file.
 # We have this here in order to just need to calculate the networks
 # in one place
 print_networks() {
-    sed "/^nvmet_networks:/a\\
-  - ${BR_NET}0/$BR_MASK\\
+    local i
+    local yaml="\
   - ${OVS0_NET}0/$OVS_MASK\\
   - ${OVS_NET}0/$OVS_MASK\\
-  - ${BR_IPV6}/$BR_PREFIX6\\
   - ${OVS0_IPV6}/$OVS_PREFIX6\\
   - ${OVS_IPV6}/$OVS_PREFIX6"
+
+    for i in $(seq 1 "$NVME_N_BRIDGES"); do
+	yaml="\
+  - $(br_ipv4 "$i")0/$BR_MASK\\
+  - $(br_ipv6 "$i")0/$BR_PREFIX6\\
+$yaml"
+    done
+    sed "/^nvmet_networks:/a\\$yaml"
 }
 
 include_conf_file() {
@@ -98,43 +113,54 @@ include_conf_file() {
 }
 
 setup_bridge() {
-    local active
+    local active bridge br_net br_net6
+    local br_idx=$1
 
-    active=$(virsh net-info "$BRIDGE" 2>/dev/null | awk '/^Active/{ print $2; }')
+    case $br_idx in
+	[1-9]) ;;
+	*) echo "=== $0: invalid bridge index \"$br_idx\" ===" >&2
+	   return 1
+	   ;;
+    esac
+    bridge="$BRIDGE$br_idx"
+    br_net=$(br_ipv4 "$br_idx")
+    br_net6=$(br_ipv6 "$br_idx")
+
+    active=$(virsh net-info "$bridge" 2>/dev/null | awk '/^Active/{ print $2; }')
     case $active in
 	yes)
-	    echo "=== $0: libvirt bridge $BRIDGE  is already active ===" >&2
+	    echo "=== $0: libvirt bridge $bridge  is already active ===" >&2
 	    return 0;
 	    ;;
 	no)
-	    echo "=== $0: starting libvirt bridge $BRIDGE ===" >&2
-	    virsh -q net-start "$BRIDGE"
-	    push_cleanup 'virsh -q net-destroy "$BRIDGE"'
+	    echo "=== $0: starting libvirt bridge $bridge ===" >&2
+	    virsh -q net-start "$bridge"
+	    push_cleanup 'virsh -q net-destroy '"$bridge"
 	    return 0;
     esac
-    echo "=== $0: creating bridge $BRIDGE with IP range ${BR_NET}0/$BR_MASK and $BR_IPV6/$BR_PREFIX6 ===" >&2
+    echo "=== $0: creating bridge $bridge with IP range ${br_net}0/$BR_MASK and $br_net6/$BR_PREFIX6 ===" >&2
 
-    ip link add "$BRIDGE" type bridge stp_state 0
-    push_cleanup 'ip link del "$BRIDGE" type bridge'
-    ip link set "$BRIDGE" up
-    push_cleanup 'ip link set "$BRIDGE" down'
-    ip addr add "${BR_NET}1/$BR_MASK" dev "$BRIDGE"
-    push_cleanup 'ip addr flush "$BRIDGE"'
-    ip -6 addr add "${BR_IPV6}1/$BR_PREFIX6" dev "$BRIDGE"
-    push_cleanup 'ip -6 addr flush "$BRIDGE"'
-    firewall-cmd -q --add-interface="$BRIDGE" --zone="$ZONE"
-    push_cleanup 'firewall-cmd -q --remove-interface="$BRIDGE" --zone="$ZONE"'
+    ip link add "$bridge" type bridge stp_state 0
+    push_cleanup "ip link del '$bridge' type bridge"
+    ip link set "$bridge" up
+    push_cleanup "ip link set '$bridge' down"
+    ip addr add "${br_net}1/$BR_MASK" dev "$bridge"
+    push_cleanup "ip addr flush '$bridge'"
+    ip -6 addr add "${br_net6}1/$BR_PREFIX6" dev "$bridge"
+    push_cleanup "ip -6 addr flush '$bridge'"
+    firewall-cmd -q --add-interface="$bridge" --zone="$ZONE"
+    push_cleanup "firewall-cmd -q --remove-interface='$bridge' --zone='$ZONE'"
     virsh -q net-define <(cat <<EOF
 <network>
-  <name>$BRIDGE</name>
+  <name>$bridge</name>
   <forward mode="bridge"/>
-  <bridge name="$BRIDGE"/>
+  <bridge name="$bridge"/>
 </network>
 EOF
 )
-    push_cleanup 'virsh -q net-undefine "$BRIDGE"'
-    virsh -q net-start "$BRIDGE"
-    push_cleanup 'virsh -q net-destroy "$BRIDGE"'
+    push_cleanup "virsh -q net-undefine '$bridge'"
+    virsh -q net-start "$bridge"
+    push_cleanup "virsh -q net-destroy '$bridge'"
 }
 
 setup_ovs() {
@@ -212,7 +238,8 @@ EOF
 }
 
 dnsmasq_net() {
-    local IFACE=$1 IP4_SUBNET=$2 IP4_MASK=$3 IP4_GATEWAY=$4
+    local IFACE=$1 IP4_SUBNET=$2 IP4_MASK=$3
+    local IP4_GATEWAY=${4:+$IP4_SUBNET$4}
     local IP6_PREFIX=$5 ROOT_SERVER=$6
     local RA_TTL=0
 
@@ -240,6 +267,7 @@ setup_dnsmasq() {
     # IPv6: don't advertize a route, just the prefix
     local RA_TTL=0
     local IP6_END=ff IP6_RANGEOPT= ENABLE_RA=
+    local br
 
     mkdir -p "$DNSMASQ_DIR"
     push_cleanup 'rmdir --ignore-fail-on-non-empty "$DNSMASQ_DIR"'
@@ -273,7 +301,7 @@ setup_dnsmasq() {
 	    ;;
     esac
 
-    [ ! "$BR_GATEWAY" ] || RA_TTL=1800
+    [ ! "$BR_GATEWAY_SUFFIX" ] || RA_TTL=1800
     cat >"$DNSMASQ_DIR/dnsmasq-nvmeof.conf" <<EOF
 strict-order
 no-hosts
@@ -288,8 +316,11 @@ dhcp-leasefile=/dev/null
 $ENABLE_RA
 $DNSMASQ_EXTRA_OPTS
 EOF
-    dnsmasq_net "$BRIDGE" "$BR_NET" "$BR_MASK" "$BR_GATEWAY" \
-		"$BR_IPV6" "$BR_RP_SERVER" >> "$DNSMASQ_DIR/dnsmasq-nvmeof.conf"
+    for br in $(seq 1 "$NVME_N_BRIDGES"); do
+	dnsmasq_net "$BRIDGE$br" "$(br_ipv4 "$br")" "$BR_MASK" "$BR_GATEWAY_SUFFIX" \
+		    "$(br_ipv6 "$br")" "$BR_RP_SERVER" \
+		    >> "$DNSMASQ_DIR/dnsmasq-nvmeof.conf"
+    done
 
     [ ! "$OVS_GATEWAY" ] || RA_TTL=1800
     [ ! "$DO_OVS" ] || {
@@ -299,6 +330,12 @@ EOF
 		    "$OVS_IPV6" "$OVS_RP_SERVER" >> "$DNSMASQ_DIR/dnsmasq-nvmeof.conf"
     }
     push_cleanup 'rm -f $DNSMASQ_DIR/dnsmasq-nvmeof.conf'
+
+    [ "$V" != 2 ] || {
+	echo "=== begin $DNSMASQ_DIR/dnsmasq-nvmeof.conf ==="
+	grep -n . "$DNSMASQ_DIR/dnsmasq-nvmeof.conf"
+	echo "=== end   $DNSMASQ_DIR/dnsmasq-nvmeof.conf ==="
+    }
 
     dnsmasq --pid-file="$DNSMASQ_DIR/dnsmasq-nvmeof.pid" -C "$DNSMASQ_DIR/dnsmasq-nvmeof.conf"
     usleep 100000
@@ -335,17 +372,16 @@ fi
 
 include_conf_file network.conf
 
-setup_bridge
+for br in $(seq 1 "$NVME_N_BRIDGES"); do
+    setup_bridge "$br"
+done
 setup_ovs
 setup_dnsmasq
 
 cat >"$CLEANUP_SCRIPT" <<EOF
 #! /bin/bash
 $([ "$V" != 2 ] || echo 'set -x')
-[ \$UID -eq 0 ] || {
-    echo "=== \$0: trying to run as root ===" >&2
-    exec sudo "\$0"
-}
+[ \$UID -eq 0 ] || exec sudo "\$0"
 export LC_ALL=C
 
 ! read -r pid < $DNSMASQ_DIR/dnsmasq-nvmeof.pid || kill \$pid
