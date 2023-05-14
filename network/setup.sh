@@ -275,6 +275,7 @@ setup_dnsmasq() {
 strict-order
 no-hosts
 no-resolv
+except-interface=lo
 bind-dynamic
 bogus-priv
 domain-needed
