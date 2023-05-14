@@ -56,7 +56,7 @@
     # filter IP addresses by members of nvme_networks
     # will be stored in results[$NETWORK].ansible_facts.ip
     ip4: >-
-      {{ ansible_facts['all_ipv4_addresses'] | ipaddr(item) | first | default(omit) }}
+      {{ ansible_facts['all_ipv4_addresses'] | ipaddr(item) }}
   loop: '{{ nvme_networks }}'
   register: __nvmet_ip_res
 
@@ -64,14 +64,15 @@
   ansible.builtin.set_fact:
     # creates a flat list of all IP addresses for nvmet
     nvmet_ip4_addrs: >-
-      {{ __nvmet_ip_res.results | json_query("[].ansible_facts.ip4") }}
+      {{ __nvmet_ip_res.results | json_query("[].ansible_facts.ip4") |
+         flatten }}
 
 - name: get IPv6 addresses for nvmet
   ansible.builtin.set_fact:
     # filter IP addresses by members of nvme_networks
     # will be stored in results[$NETWORK].ansible_facts.ip6
     ip6: >-
-      {{ ansible_facts['all_ipv6_addresses'] | ipaddr(item) | first | default(omit) }}
+      {{ ansible_facts['all_ipv6_addresses'] | ipaddr(item) }}
   loop: '{{ nvme_networks }}'
   register: __nvmet_ip6_res
 
@@ -79,7 +80,8 @@
   ansible.builtin.set_fact:
     # creates a flat list of all IP addresses for nvmet
     nvmet_ip6_addrs: >-
-      {{ __nvmet_ip6_res.results | json_query("[].ansible_facts.ip6") }}
+      {{ __nvmet_ip6_res.results | json_query("[].ansible_facts.ip6") |
+         flatten }}
 
 - name: get interface names for nvmet (IPv4)
   ansible.builtin.set_fact:
