@@ -57,7 +57,7 @@ else
 GATEWAY ?= $(SUBNET)1
 endif
 
-NQN_PREFIX := nqn.2022-12.org.nvmexpress.boot.poc:$(patsubst .%,,$(shell hostname)).vagrant-nvmet
+NQN_PREFIX := nqn.2022-12.org.nvmexpress.boot.poc:$(shell echo "$${HOSTNAME%%.*}").vagrant-nvmet
 # See subsysnqn_prefix in nvmet-server/group_vars/nvme_servers
 ifeq ($(DISCOVERY),)
 SUBSYSNQN ?= $(NQN_PREFIX).subsys$(SUBSYS)
