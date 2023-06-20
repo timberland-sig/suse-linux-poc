@@ -4,3 +4,9 @@ ansible_python_interpreter: /usr/bin/python3
 
 # Work around vagrant bug using wrong variable name "ansible_user"
 ansible_ssh_user: '{{ ansible_user }}'
+
+# This can be set to false for re-provisioning an already installed server
+# to speed up the provisioning process.
+# It won't help for initial provisioning, because packages will need
+# to be installed an fetched from the net.
+do_zypper_update: true

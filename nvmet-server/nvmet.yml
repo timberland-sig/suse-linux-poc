@@ -20,6 +20,7 @@
         name: filesystem
         state: present
         update_cache: yes
+      when: do_zypper_update
 
   roles:
     - role: nvmet
