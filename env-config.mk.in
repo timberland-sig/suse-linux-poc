@@ -33,3 +33,5 @@ OVS_VLAN_ID := 1
 # If this is > 4, please edit nvmet-server/group_vars/nvme_servers
 NVME_MAX_NAMESPACES := 2
 
+# vagrant-libvirt storage pool to use
+STORAGE_POOL := default
