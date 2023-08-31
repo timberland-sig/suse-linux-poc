@@ -243,11 +243,8 @@ $(ISO):	$(ORIG_ISO)
 vm/$(VM_NAME)-vars.bin: ovmf/OVMF_VARS.fd | vm $(EFIDISK)
 	@echo === building $@ because of $?
 	$(Q)cp ovmf/OVMF_VARS.fd $@
-	@echo "### Starting VM to initialize NVMeoF boot attempt ###"
-	@echo "* HIT ESC IMMEDIATELY after VM starts"
-	@echo "* boot EFI shell, run startup.nsh, and kill with Ctrl-b x"
-	@sleep 3
-	$(Q)VM_ISO= ./qemu.sh
+
+vars:	vm/$(VM_NAME)-vars.bin
 
 inst:	vm/$(VM_NAME)-vars.bin $(DUD) $(ISO)
 	@echo "Installing VM with UUID=$(VM_UUID) (kill with Ctrl-b x)"
@@ -321,7 +318,7 @@ keys/repomd.xml.key:	| keys
 
 timberland-ovmf.zip:
 	@echo === downloading OVMF firmware image from $(OVMF_URL)
-	$(Q)wget -q -O timberland-ovmf.zip $(OVMF_URL)
+	$(Q)wget --no-use-server-timestamps -q -O timberland-ovmf.zip $(OVMF_URL)
 
 ovmf/NvmeOfCli.efi ovmf/VConfig.efi ovmf/OVMF_CODE.fd ovmf/OVMF_VARS.fd: timberland-ovmf.zip | ovmf
 	$(Q)unzip -d ovmf -o -DD timberland-ovmf.zip
