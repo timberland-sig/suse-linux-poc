@@ -255,11 +255,14 @@ proof-of-concept setup instead, as described in [the following section](#full-pr
  * Run **make AUTOINST=1 inst**, hit ESC quickly after VM startup.
  * Open Boot Manager and start `EFI Internal Shell`, let `startup.nsh`
    run. The boot menu will be displayed.
- * Stop the VM with `Ctrl-b x`, it will restart, and the Installation menu
-   will be displayed
+ * Open the boot manager again and watch out for an "NVMe" entry. If it
+   doesn't exist, something went wrong, see below.
+ * Reset the VM from the EFI Menu, it will reboot.
+ * Select the DVD as boot device. The Installation menu
+   will be displayed.
  * Edit the `Installation` entry, and add `console=ttyS0` to the kernel
    command line.
- * Start the installationx.
+ * Start the installation.
  * After installation, the installed VM will boot from NVMe-oF. 
    The root password is "timberland".
 
@@ -401,17 +404,31 @@ NVMe-oF boot attempt variables. Run
 
     make inst
 
+### First-time boot
+
 **As soon as the VM starts, hit the `ESC` key**. If you miss it and PXE boot
 starts, kill the VM with `Ctrl-b x` and try again. In the EFI main menu,
-select `Boot Manager → EFI Internal Shell`. Don't interrupt and let the shell
-execute `startup.nsh`. Back in the main menu, quit the VM with `Ctrl-b x`.
-See [What happened here?](#what-happened-here) for an explanation of this step.
+select `Boot Maintenance Manager → Boot Options` and disable the PXE boot
+options. Back in the main EFI menu, select `Boot Manager → EFI Internal
+Shell`. Don't interrupt and let the shell execute `startup.nsh`. 
+Back in the main menu, **reset the VM**. See [What happened
+here?](#what-happened-here) for an explanation of this step.
 
-The VM will start again. This time, just wait until you see the boot menu from
-the openSUSE DVD (you my have to type `t` first to display the menu on serial
-console). Move cursor to `Installation`, type `e` to edit the line,
-and add `console=ttyS0` on the line starting with `linux`[^vga]. Type `Ctrl-x`
-to start the installation.
+### Controlling the NVMe-oF setup
+
+_(This step can be skipped)_. Hit `ESC` again during boot. If you're dropped
+into the UEFI shell, type `exit`. In the UEFI main menu, enter the `Boot
+Manager`. Verify that an NVMe-oF device is now offered a boot option. If this
+is not the case, you'll need to troubleshoot your network and NVMe-oF
+configuration. Select the first DVD-ROM in the boot manager to start the
+installation.
+
+### Installation
+
+Wait until you see the boot menu from the openSUSE DVD (you my have to type
+`t` first to display the menu on serial console). Move cursor to
+`Installation`, type `e` to edit the line, and add `console=ttyS0` on the line
+starting with `linux`[^vga]. Type `Ctrl-x` to start the installation.
 
 [^vga]: Alternatively, set `VM_VGA_FLAGS` in `vm-config.mk` to
     enable a VGA console and graphical UI for qemu.
