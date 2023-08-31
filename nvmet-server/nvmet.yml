@@ -6,6 +6,8 @@
   pre_tasks:
     - name: construct list of disk serial numbers for nvmet
       ansible.builtin.set_fact:
+        # It's assumed that the disks in the server VM have serial numbers
+        # "nvme_01", "nvme_02", etc. (see Vagrantfile).
         # This creates a list ["virtio-nvme_v01", "virtio-nvme_v02", ... ]
         # The nvmet role will look up the matching devices for these IDs.
         nvme_disk_ids: >-
