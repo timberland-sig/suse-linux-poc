@@ -8,9 +8,6 @@ AUTOINST :=
 # prefix for constructing the hostname from VM_NAME
 NAME_PREFIX := nvmeof-
 
-# URL for downloading OVMF image
-OVMF_URL := https://github.com/timberland-sig/edk2/releases/download/release-9e63dc0/timberland-ovmf-release-9e63dc0.zip
-
 # Defaults to avoid syntax errors while config.mk doesn't exist
 OVS_VLAN_ID := 1
 IP4_PREFIX := 192.168
@@ -22,6 +19,10 @@ SERVER_NAME := vagrant-nvmet
 # derived variables like VM_BRIDGE
 include env-config.mk
 include vm-config.mk
+
+# URL for downloading OVMF image
+OVMF_RELEASE ?= 0f54758
+OVMF_URL := https://github.com/timberland-sig/edk2/releases/download/release-0f54758/timberland-ovmf-release-0f54758.zip
 
 # Avoid shell syntax error below if vm-config.mk doesn't exist yet
 VLAN_ID ?= 0
