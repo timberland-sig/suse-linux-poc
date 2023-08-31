@@ -154,6 +154,9 @@ setup_ovs() {
     push_cleanup 'ip addr flush dev "$OVS_BRIDGE"'
     ip link set dev "$OVS_BRIDGE" up
     push_cleanup 'ip link set dev "$OVS_BRIDGE" down'
+    firewall-cmd -q --add-interface="$OVS_BRIDGE" --zone="$ZONE"
+    push_cleanup 'firewall-cmd -q --remove-interface="$OVS_BRIDGE" --zone="$ZONE"'
+
     ovs-vsctl add-port "$OVS_BRIDGE" "$PORT" tag="$OVS_VLAN_ID" -- set Interface "$PORT" type=internal
     push_cleanup 'ovs-vsctl del-port "$OVS_BRIDGE" "$PORT"'
     ip addr add "${OVS_NET}1/$OVS_MASK" dev "$PORT"
