@@ -633,6 +633,45 @@ do this manually.
 Use `make V=1` to show details of the actions carried out by `make`. Use `V=2`
 to enable verbose output of helper scripts, vagrant, and ansible.
 
+### Network settings
+
+Most of the time, failure to boot from NVMe is caused by network setup issues.
+
+* Check the status of the bridges and interfaces. If in doubt, restart the
+  virtual networks using
+
+        make net-down
+		make server-up
+
+* Check firewall settings on the VM host; at the very least, DHCPv4/v6 queries
+  need to be received by the dnsmasq daemon running on the host.
+
+* Check the status of the NVMe target VM. You can enter the VM by changing to
+  the `nvmet-server` subdirectory and running `vagrant ssh`. Once in the VM,
+  you can run `sudo` to investigate the status and apply fixes. Verify that
+  all configured interfaces of the server VM are up and have the expected IP
+  addresses (see [Setting up the environment](#setting-up-the-environment)),
+  and that the VM host can be pinged through any of them. By default, all IP
+  addresses of the NVMet server exept the address of `eth0` will end with
+  `.10` for IPv4 or `::10` for IPv6. Also run `nvmetcli ls` to verify the
+  volumes exported by the server.
+
+### Client settings
+
+Examine the NVMe-oF configuration file `efidisk/Config` and make sure the 
+settings match the configured bridges and the subsystems exported by the server.
+
+### Debugging
+
+On the VM host, the output of **dnsmasq** can be helpful to see if the server
+and/or the client successfully retrieve IP addresses. It's
+recommended to use a DHCP setup for the client initially, because otherwise
+this debugging method won't be available.
+
+Use **tcpdump** or similar tools on the VM host and / or on the NVMe target to
+see whether the client tries to connect. The system log on the NVMe target
+will log both successful and unsuccessful NVMe connection attempts.
+
 # How Does This Work?
 
 The bulk of the logic that enables NVMeoF boot, as far as Linux is concerned,
