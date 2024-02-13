@@ -30,7 +30,7 @@ libvirt_network_name() {
 }
 
 LV_NET=$(libvirt_network_name "$VM_BRIDGE")
-LV_PG=
+LV_PG=$(xsltproc --stringparam id "$VLAN_ID" "$LV_DIR/portgroup.xslt" <(virsh net-dumpxml "$LV_NET"))
 
 : "${BASE:=$MYDIR/ovmf}"
 : "${OVMF_CODE:=$BASE/OVMF_CODE.fd}"

@@ -6,6 +6,12 @@
   <xsl:template match="@*|node()">
     <xsl:apply-templates select="@*|node()"/>
   </xsl:template>
+  <xsl:template match="/network/portgroup[not(vlan)]">
+    <xsl:if test="$id='' or $id='0'">
+      <xsl:value-of select="@name"/>
+      <xsl:text>&#xa;</xsl:text>
+    </xsl:if>
+  </xsl:template>
   <xsl:template match="/network/portgroup/vlan[not(@trunk)]/tag">
     <xsl:if test="@id=$id">
       <xsl:value-of select="../../@name"/>
