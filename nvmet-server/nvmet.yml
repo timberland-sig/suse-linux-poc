@@ -10,11 +10,19 @@
         # "nvme_01", "nvme_02", etc. (see Vagrantfile).
         # This creates a list ["virtio-nvme_v01", "virtio-nvme_v02", ... ]
         # The nvmet role will look up the matching devices for these IDs.
-        nvme_disk_ids: >-
+        nvmet_disk_ids: >-
           [{% for x in range(max_namespaces) %}
           "{{ device_id_format.format(x + 1) }}"
            {{ "," if loop.revindex != 1 else "" }}
           {% endfor %}]
+        # truncate nvmet_subsystems to max_namespaces length
+        nvmet_subsystems: >-
+          {{ all_nvme_subsystems | json_query("[:" ~ max_namespaces ~ "]") }}
+        # Use host and VM hostnames to construct NQN
+        nvmet_subsysnqn_format: >-
+          {{ subsysnqn_prefix ~
+             lookup("pipe", "hostname") | regex_replace("\..*", "") ~ "." ~
+             inventory_hostname ~ ".subsys{0:02d}" }}
 
     - name: update zypper cache
       become: yes

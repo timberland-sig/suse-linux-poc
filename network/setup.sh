@@ -68,7 +68,7 @@ $CLEANUP"
 # We have this here in order to just need to calculate the networks
 # in one place
 print_networks() {
-    sed "/^nvme_networks:/a\\
+    sed "/^nvmet_networks:/a\\
   - ${BR_NET}0/$BR_MASK\\
   - ${OVS0_NET}0/$OVS_MASK\\
   - ${OVS_NET}0/$OVS_MASK\\
