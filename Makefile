@@ -325,14 +325,17 @@ ovmf/NvmeOfCli.efi ovmf/VConfig.efi ovmf/OVMF_CODE.fd ovmf/OVMF_VARS.fd: timberl
 
 OVMF:	ovmf/OVMF_CODE.fd
 
+ifneq ($(PACKAGES),)
 $(PACKAGEDIR): keys/repomd.xml.key
 	$(Q)mkdir -p $@
-ifneq ($(PACKAGES),)
 	@echo === downloading packages from $(PACKAGE_URL)
 	$(Q)cd $@ && \
 	   wget -q --mirror --no-if-modified-since -np -nd \
 	      -R '*debug*' -R '*-devel*' -A '*.x86_64.rpm' $(PACKAGE_URL)/x86_64 || \
 	   { rmdir $@; false; }
+else
+$(PACKAGEDIR):
+	$(Q)mkdir -p $@
 endif
 
 packages:	| $(PACKAGEDIR)
