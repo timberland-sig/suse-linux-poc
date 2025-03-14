@@ -324,10 +324,7 @@ trap 'echo $0: line ${LINENO}: ERROR in \"$BASH_COMMAND\" >&2; exit 1' ERR
 trap 'trap - ERR; echo "=== $0: cleaning up ===" >&2; eval "$CLEANUP"' 0
 set -E
 
-[ "$UID" -eq 0 ] || {
-    echo "=== $0: trying to run as root ===" >&2
-    exec sudo "$0"
-}
+[ "$UID" -eq 0 ] || exec sudo "$0"
 
 DO_OVS=
 if [ "$NVME_USE_OVS" = 1 ]; then
