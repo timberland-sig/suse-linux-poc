@@ -75,20 +75,28 @@ While most of this Proof of Concept can be run rootless, some commands require
 superuser priviliges, in particular network setup. Your user ID should have
 permissions to run virtual machines both under plain qemu[^qemu_ovs] and under
 libvirt. On most modern Linux distributions, this is granted by
-adding the user to the groups `qemu` (or `kvm`) and `libvirt`, respectively.
+adding the user to the groups `qemu` and/or `kvm` and `libvirt`, respectively.
 
 [^qemu_ovs]: qemu will only be run under your user ID if no OpenVSwitch bridge
 	is used, because bringing up openvswitch interfaces doesn't work with
 	rootless qemu.
 
-Thr command **make help-rootless** prints configuration hints
+In the default setup without OpenVSwitch, the virtual network is set up
+using a regular Linux bridge, and qemu is run under your user ID.
+This requires the name of the bridge `br_nvme` to be listed in
+`/etc/qemu/bridge.conf` (see below).  Besides, **qemu-bridge-helper** must be
+installed SUID root, and the user running **qemu** must have permissions to
+execute it. The details vary between distributions. On OpenSUSE, you must
+be member of the `kvm` group.
+
+The command **make help-rootless** prints configuration hints
 to enable passwordless execution for those commands
 that need root permissions.
 The output looks like this, with some variables substituted to
 match your environment:
 
     ###  User joe must be able control qemu and libvirt
-    Usually that means joe should be member of the groups "qemu" and "libvirt"
+    Usually that means joe should be member of the groups "kvm" and "libvirt"
     
     ### Recommended sudoers configuration (add with visudo):
     User_Alias NVME_USERS = joe

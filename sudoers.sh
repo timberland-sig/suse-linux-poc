@@ -4,7 +4,7 @@ hostn=${hostn%%.*}
 
 cat <<EOF
 ###  User $USER must be able control qemu and libvirt
-Usually that means $USER should be member of the groups "qemu" and "libvirt"
+Usually that means $USER should be member of the groups "kvm" and "libvirt"
 
 ### Recommended sudoers configuration (add with visudo):
 User_Alias NVME_USERS = $USER
