@@ -26,8 +26,9 @@ NVME_N_BRIDGES := 1
 IP4_PREFIX := 192.168
 ULA_PREFIX := fddf:d:f
 SUBNET_BASE := 50
-# VLAN port to set up in OVS (if enabled; use value between 1 and 9)
-OVS_VLAN_ID := 1
+
+# Number of VLANs to create on OVS switch
+NVME_N_VLANS := 2
 
 ### SERVER SETTINGS
 

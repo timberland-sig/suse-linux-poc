@@ -136,6 +136,7 @@ export NVME_MAX_NAMESPACES
 export STORAGE_POOL
 export NVME_USE_OVS
 export NVME_N_BRIDGES
+export NVME_N_VLANS
 export VLAN_ID
 export LIBVIRT_DEFAULT_URI
 export ULA_PREFIX
@@ -303,6 +304,7 @@ server-destroy: net-down
 	@echo "=== DESTROYING nmet server, hit ctrl-c now to abort"
 	@sleep 2
 	$(Q)cd nvmet-server && vagrant destroy $(VAGRANT_DBG) -f
+	$(Q)rm -f nvmet-server/group_vars/nvme_servers
 
 net-down: server-down
 	$(Q)[ ! -x ./network/cleanup.sh ] || { \

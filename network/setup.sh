@@ -7,6 +7,7 @@
 # Parameters for calculating IP address ranges
 : "${ULA_PREFIX:=fddf:d:f}"
 : "${IP4_PREFIX:=192.168}"
+: "${NVME_N_VLANS:=2}"
 : "${OVS_VLAN_ID:=1}"
 : "${SUBNET_BASE:=50}"
 # This should match server.vm.hostname in nvmet/Vagrantfile
@@ -29,28 +30,21 @@
 : "${BRIDGE:=br_nvme}"
 : "${BR_MASK:=24}"
 : "${BR_PREFIX6:=64}"
-# Set to last element of gateway to enable routing
-# e.g. 5 for gateway 192.168.X.5 on all IPv4 networks
-: "${BR_GATEWAY_SUFFIX:=}"
 
 : "${OVS_BRIDGE:=ovs_nvme}"
-: "${OVS0_NET:=$IP4_PREFIX.$SUBNET_BASE.}"
-: "${OVS_NET:=$IP4_PREFIX.$((SUBNET_BASE+OVS_VLAN_ID)).}"
 : "${OVS_MASK:=24}"
-: "${OVS0_IPV6:=$ULA_PREFIX:$SUBNET_BASE::}"
-: "${OVS_IPV6:=$ULA_PREFIX:$((SUBNET_BASE+OVS_VLAN_ID))::}"
-: "${OVS0_PREFIX6:=64}"
 : "${OVS_PREFIX6:=64}"
-# Set to gateway IP address (${OVS_NET}1) to enable routing
-: "${OVS0_GATEWAY:=}"
-: "${OVS_GATEWAY:=}"
 
 # Set this in network.conf to override the server name
 # in the DHCP root-path option (e.g. for using the IP address of the server)
 # the default is the server's FQDN
 : "${BR_RP_SERVER:=}"
 : "${OVS_RP_SERVER:=}"
-: "${OVS0_RP_SERVER:=}"
+
+# Set to last element of gateway to enable routing
+# e.g. 5 for gateway 192.168.X.5 on all IPv4 networks
+: "${BR_GATEWAY_SUFFIX:=}"
+: "${OVS_GATEWAY:=}"
 
 # Directory where to store dnsmasq conf files
 # location may depend on security settings (Apparmor)
@@ -72,16 +66,29 @@ br_ipv6() {
     echo "$ULA_PREFIX:$((SUBNET_BASE - $1))::"
 }
 
+ovs_ipv4() {
+    echo "$IP4_PREFIX.$((SUBNET_BASE + $1))."
+}
+
+ovs_ipv6() {
+    echo "$ULA_PREFIX:$((SUBNET_BASE + $1))::"
+}
+
 # Used to generate the ansible input file.
 # We have this here in order to just need to calculate the networks
 # in one place
 print_networks() {
     local i
     local yaml="\
-  - ${OVS0_NET}0/$OVS_MASK\\
-  - ${OVS_NET}0/$OVS_MASK\\
-  - ${OVS0_IPV6}/$OVS_PREFIX6\\
-  - ${OVS_IPV6}/$OVS_PREFIX6"
+  - $(ovs_ipv4 0)0/$OVS_MASK\\
+  - $(ovs_ipv6 0)0/$OVS_PREFIX6"
+
+    for i in $(seq 1 "$NVME_N_VLANS"); do
+	yaml="\
+  - $(ovs_ipv4 "$i")0/$OVS_MASK\\
+  - $(ovs_ipv6 "$i")0/$OVS_PREFIX6\\
+$yaml"
+    done
 
     for i in $(seq 1 "$NVME_N_BRIDGES"); do
 	yaml="\
@@ -163,35 +170,61 @@ EOF
     push_cleanup "virsh -q net-destroy '$bridge'"
 }
 
+setup_ovs_vlan() {
+    local ovs_bridge=$1
+    local vlan_id=$2
+    local port="nvme$vlan_id"
+
+    ovs-vsctl add-port "$ovs_bridge" "$port" tag="$vlan_id" -- \
+	      set Interface "$port" type=internal
+    push_cleanup "ovs-vsctl del-port '$ovs_bridge' '$port'"
+
+    ip addr add "$(ovs_ipv4 "$vlan_id")1/$OVS_MASK" dev "$port"
+    ip addr add "$(ovs_ipv6 "$vlan_id")1/$OVS_PREFIX6" dev "$port"
+    push_cleanup "ip addr flush dev '$port'"
+
+    ip link set dev "$port" up
+    push_cleanup "ip link set dev '$port' down"
+
+    firewall-cmd -q --add-interface="$port" --zone="$ZONE"
+    push_cleanup "firewall-cmd -q --remove-interface='$PORT' --zone='$ZONE'"
+}
+
+ovs_vlan_xml() {
+    local id
+
+    for id in $(seq 1 "$NVME_N_VLANS"); do
+	echo "\
+<portgroup name='pg$id'>
+  <vlan>
+    <tag id='$id'/>
+  </vlan>
+</portgroup>"
+    done
+}
+
 setup_ovs() {
     local active brdev
+    local vlan_id
+    local vlan_xml
 
     [[ "$DO_OVS" ]] || return 0
-    PORT=nvme$OVS_VLAN_ID
-    TAG=$PORT
-    DOMAIN=$PORT
 
     if ! ovs-vsctl br-exists "$OVS_BRIDGE"; then
 	ovs-vsctl add-br "$OVS_BRIDGE"
 	push_cleanup 'ovs-vsctl del-br "$OVS_BRIDGE"'
     fi
-    ip addr add "${OVS0_NET}1/$OVS_MASK" dev "$OVS_BRIDGE"
-    ip addr add "${OVS0_IPV6}1/$OVS0_PREFIX6" dev "$OVS_BRIDGE"
+    ip addr add "$(ovs_ipv4 0)1/$OVS_MASK" dev "$OVS_BRIDGE"
+    ip addr add "$(ovs_ipv6 0)1/$OVS_PREFIX6" dev "$OVS_BRIDGE"
     push_cleanup 'ip addr flush dev "$OVS_BRIDGE"'
     ip link set dev "$OVS_BRIDGE" up
     push_cleanup 'ip link set dev "$OVS_BRIDGE" down'
     firewall-cmd -q --add-interface="$OVS_BRIDGE" --zone="$ZONE"
     push_cleanup 'firewall-cmd -q --remove-interface="$OVS_BRIDGE" --zone="$ZONE"'
 
-    ovs-vsctl add-port "$OVS_BRIDGE" "$PORT" tag="$OVS_VLAN_ID" -- set Interface "$PORT" type=internal
-    push_cleanup 'ovs-vsctl del-port "$OVS_BRIDGE" "$PORT"'
-    ip addr add "${OVS_NET}1/$OVS_MASK" dev "$PORT"
-    ip addr add "${OVS_IPV6}1/$OVS_PREFIX6" dev "$PORT"
-    push_cleanup 'ip addr flush dev "$PORT"'
-    ip link set dev "$PORT" up
-    push_cleanup 'ip link set dev "$PORT" down'
-    firewall-cmd -q --add-interface="$PORT" --zone="$ZONE"
-    push_cleanup 'firewall-cmd -q --remove-interface="$PORT" --zone="$ZONE"'
+    for vlan_id in $(seq 1 "$NVME_N_VLANS"); do
+	setup_ovs_vlan "$OVS_BRIDGE" "$vlan_id"
+    done
 
     active=$(virsh net-info "$OVS_BRIDGE" 2>/dev/null | awk '/^Active/{ print $2; }')
     if [ "$active" ]; then
@@ -206,7 +239,8 @@ EOF
 	# the libvirt network exists - make sure it maps to the correct bridge
 	[[ "$brdev" = "$OVS_BRIDGE" ]]
     else
-	echo "=== $0: creating OVS bridge $OVS_BRIDGE with vlan id $OVS_VLAN_ID on $PORT ===" >&2
+	echo "=== $0: creating OVS bridge $OVS_BRIDGE with VLANs $(seq 1 "$NVME_N_VLANS") ===" >&2
+	vlan_xml=$(ovs_vlan_xml)
 	virsh -q net-define <(cat <<EOF
 <network>
   <name>$OVS_BRIDGE</name>
@@ -219,11 +253,7 @@ EOF
     </vlan>
   </portgroup>
   <portgroup name='pg0'/>
-  <portgroup name='pg$OVS_VLAN_ID'>
-    <vlan>
-      <tag id='$OVS_VLAN_ID'/>
-    </vlan>
-  </portgroup>
+  ${vlan_xml}
 </network>
 EOF
 )
@@ -267,7 +297,7 @@ setup_dnsmasq() {
     # IPv6: don't advertize a route, just the prefix
     local RA_TTL=0
     local IP6_END=ff IP6_RANGEOPT= ENABLE_RA=
-    local br
+    local br vl
 
     mkdir -p "$DNSMASQ_DIR"
     push_cleanup 'rmdir --ignore-fail-on-non-empty "$DNSMASQ_DIR"'
@@ -324,10 +354,12 @@ EOF
 
     [ ! "$OVS_GATEWAY" ] || RA_TTL=1800
     [ ! "$DO_OVS" ] || {
-	dnsmasq_net "$OVS_BRIDGE" "$OVS0_NET" "$OVS_MASK" "$OVS0_GATEWAY" \
-		    "$OVS0_IPV6" "$OVS0_RP_SERVER" >> "$DNSMASQ_DIR/dnsmasq-nvmeof.conf"
-	dnsmasq_net "$PORT" "$OVS_NET" "$OVS_MASK" "$OVS_GATEWAY" \
-		    "$OVS_IPV6" "$OVS_RP_SERVER" >> "$DNSMASQ_DIR/dnsmasq-nvmeof.conf"
+	dnsmasq_net "$OVS_BRIDGE" "$(ovs_ipv4 0)" "$OVS_MASK" "$OVS0_GATEWAY" \
+		    "$(ovs_ipv6 0)" "$OVS_RP_SERVER" >> "$DNSMASQ_DIR/dnsmasq-nvmeof.conf"
+	for vl in $(seq 1 "$NVME_N_VLANS"); do
+	    dnsmasq_net "nvme$vl" "$(ovs_ipv4 "$vl")" "$OVS_MASK" "$OVS_GATEWAY" \
+			"$(ovs_ipv6 "$vl")" "$OVS_RP_SERVER" >> "$DNSMASQ_DIR/dnsmasq-nvmeof.conf"
+	done
     }
     push_cleanup 'rm -f $DNSMASQ_DIR/dnsmasq-nvmeof.conf'
 

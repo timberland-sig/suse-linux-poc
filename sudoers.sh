@@ -12,7 +12,7 @@ Host_Alias NVME_HOSTS = $hostn
 Cmd_Alias NVME_CMDS = $PWD/qemu.sh ""
 Cmd_Alias NVME_NET = $PWD/network/setup.sh "", $PWD/network/cleanup.sh ""
 Defaults!NVME_CMDS env_keep += "VM_NAME VM_UUID VM_OVMF_IMG VM_BRIDGE VM_ISO VM_DUD VM_VGA_FLAGS V"
-Defaults!NVME_NET env_keep += "NVME_USE_OVS V"
+Defaults!NVME_NET env_keep += "NVME_USE_OVS NVME_N_BRIDGES NVME_N_VLANS V"
 NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_CMDS
 NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_NET
 ### End of sudoers config ###
