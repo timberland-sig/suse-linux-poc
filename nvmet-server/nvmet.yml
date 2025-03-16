@@ -31,5 +31,22 @@
         update_cache: yes
       when: do_zypper_update
 
+  handlers:
+    - name: restart firewalld
+      become: true
+      systemd:
+        name: firewalld
+        state: restarted
+
   roles:
     - role: nvmet
+
+  tasks:
+    - name: disable IPv6_rpfilter
+      become: true
+      lineinfile:
+        path: /etc/firewalld/firewalld.conf
+        line: IPv6_rpfilter=no
+        regexp: ^IPv6_rpfilter=
+      notify: restart firewalld
+
