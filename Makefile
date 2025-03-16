@@ -9,7 +9,6 @@ AUTOINST :=
 NAME_PREFIX := nvmeof-
 
 # Defaults to avoid syntax errors while config.mk doesn't exist
-OVS_VLAN_ID := 1
 IP4_PREFIX := 192.168
 ULA_PREFIX := fddf:d:f
 SUBNET_BASE := 50
@@ -141,7 +140,6 @@ export VLAN_ID
 export LIBVIRT_DEFAULT_URI
 export ULA_PREFIX
 export IP4_PREFIX
-export OVS_VLAN_ID
 export SUBNET_BASE
 export SERVER_NAME
 

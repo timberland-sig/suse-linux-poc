@@ -11,7 +11,7 @@ VM_VGA_FLAGS :=
 # run "make sudo-hint" for sudo configuration
 VM_NETWORK_TYPE := bridge
 
-# For testing VLAN, set VM_NETWORK_TYPE=ovs and VLAN_ID=$(OVS_VLAN_ID)
+# For testing VLAN, set VM_NETWORK_TYPE=ovs and VLAN_ID > 0
 # Otherwise, set to 0
 VLAN_ID := 0
 

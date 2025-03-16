@@ -245,8 +245,8 @@ The individual settings are:
   contains native support for NVMe-oF/TCP boot, whereas 15.4 needs a driver
   update disk (DUD) with updated packages. The PoC scripts will build the DUD
   automatically.
-* `VLAN_ID`: (only in OVS setups with `VM_NETWORK_TYPE=ovs`): If set to 1
-  (actually, `$(OVS_VLAN_ID)`), a tagged VLAN with VLAN ID 1 will be
+* `VLAN_ID`: (only in OVS setups with `VM_NETWORK_TYPE=ovs`): If set to a
+  number between 1 an NVME_N_VLANS, a tagged VLAN with VLAN ID 1 will be
   configured on the client VM.
 * `USE_GW`: Add a gateway. This makes it possible to configure a target that
   is outside the directly attached subnet of the VM. Actually doing that
