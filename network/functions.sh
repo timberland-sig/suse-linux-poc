@@ -53,6 +53,7 @@ export LC_ALL=C
 ! read -r pid < $DNSMASQ_DIR/dnsmasq-nvmeof.pid || kill \$pid
 EOF
     eval "echo \"$CLEANUP\"" >>"$CLEANUP_SCRIPT"
+    echo "rm -f '$CLEANUP_SCRIPT'" >>"$CLEANUP_SCRIPT"
     chmod a+x "$CLEANUP_SCRIPT"
     echo "=== $0: to clean up, run $CLEANUP_SCRIPT ===" >&2
 }

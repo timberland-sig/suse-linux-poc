@@ -3,7 +3,6 @@ export LC_ALL=C
 : "${V:=}"
 # trace the script with V=2
 [ "$V" != 2 ] || set -x
-[ "$UID" -eq 0 ] || exec sudo "$0"
 
 MYDIR=${0%/*}
 
@@ -11,7 +10,7 @@ MYDIR=${0%/*}
 . "$MYDIR/functions.sh"
 
 CLEANUP_SCRIPT="$PWD/network/cleanup.sh"
-CLEANUP='rm -f "$CLEANUP_SCRIPT"'
+CLEANUP=':'
 
 # Used to generate the ansible input file.
 # We have this here in order to just need to calculate the networks
@@ -314,10 +313,13 @@ case $1 in
 	;;
 esac
 
+[ "$UID" -eq 0 ] || exec sudo "$0"
+
 trap 'echo $0: line ${LINENO}: ERROR in \"$BASH_COMMAND\" >&2; exit 1' ERR
 trap 'trap - ERR; echo "=== $0: cleaning up ===" >&2; eval "$CLEANUP"' 0
 set -E
 
+[[ -f "$CLEANUP_SCRIPT" ]] && exit 0
 DO_OVS=
 if [ "$NVME_USE_OVS" = 1 ]; then
     DO_OVS=yes
@@ -332,6 +334,8 @@ for br in $(seq 1 "$NVME_N_BRIDGES"); do
 done
 setup_ovs
 setup_dnsmasq
+"$MYDIR"/router.sh
+push_cleanup "'$MYDIR'/cleanup-router.sh"
 
 write_cleanup_script
 trap - 0
