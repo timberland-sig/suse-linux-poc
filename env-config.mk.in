@@ -18,10 +18,11 @@ NVME_N_BRIDGES := 1
 # addresses will be constructed as follows (decimal arithmetic also for IPv6!)
 # For the br_nvme bridge:
 # IPv4: $IP4_PREFIX.$((SUBNET_BASE-1)).x (default 192.168.49.x)
-# IPv6: $ULA_PREFIX:$((SUBNET_BASE-1))::x (default fddf:d:f:49::x)
+# IPv6: $ULA_PREFIX:bb01::x (default fddf:d:f:bb01::x)
 # For OVS (if enabled):
 # IPv4: $IP4_PREFIX.$((SUBNET_BASE+vlan_id)).x (default e.g. 192.168.51.x)
-# IPv6: $ULA_PREFIX:$((SUBNET_BASE+vlan_id)::x
+# IPv6: $ULA_PREFIX:bb01::x (default fddf:d:f:bb01::x)
+# IPv6: $ULA_PREFIX:aa${vlan_id}::x default fddf:d:f:aa01::x for VLAN 1)
 # 192.168.50.x for VLAN 0 and 192.168.52.x for VLAN 2, IPv6 accordingly
 IP4_PREFIX := 192.168
 ULA_PREFIX := fddf:d:f

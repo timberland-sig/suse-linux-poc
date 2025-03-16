@@ -8,15 +8,19 @@ br_ipv4() {
 }
 
 br_ipv6() {
-    echo "$ULA_PREFIX:$((SUBNET_BASE - $1))::"
+    printf "%s:bb%02x::" "$ULA_PREFIX" "$1"
 }
 
 ovs_ipv4() {
-    echo "$IP4_PREFIX.$((SUBNET_BASE + $1))."
+    if [[ "$1" -le "$NVME_N_VLANS" ]]; then
+	echo "$IP4_PREFIX.$((SUBNET_BASE + $1))."
+    else
+	echo "$IP4_PREFIX.$1."
+    fi
 }
 
 ovs_ipv6() {
-    echo "$ULA_PREFIX:$((SUBNET_BASE + $1))::"
+    printf "%s:aa%02x::" "$ULA_PREFIX" "$1"
 }
 
 include_conf_file() {
