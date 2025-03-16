@@ -1,78 +1,17 @@
 #! /bin/bash
+export LC_ALL=C
 : "${V:=}"
 # trace the script with V=2
 [ "$V" != 2 ] || set -x
+[ "$UID" -eq 0 ] || exec sudo "$0"
 
-# Set environment variables in "network.conf" to override the settings below
-# Parameters for calculating IP address ranges
-: "${ULA_PREFIX:=fddf:d:f}"
-: "${IP4_PREFIX:=192.168}"
-: "${NVME_N_VLANS:=2}"
-: "${OVS_VLAN_ID:=1}"
-: "${SUBNET_BASE:=50}"
-# This should match server.vm.hostname in nvmet/Vagrantfile
-: "${SERVER_NAME:=vagrant-nvmet}"
-# Set to a firewall zone that allows incoming dhcp (v4/v6) and dns
-: "${ZONE:=libvirt}"
-# IPv6 autoconfiguration methods
-# values: slaac, stateless, dhcp+slaac, dhcp+ra, dhcp
-# see below
-: "${DHCP6_TYPE:=dhcp+ra}"
-# Router advertisements
-: "${RA_INTERVAL:=30}"
-# Lease time (s)
-: "${DHCP_LEASETIME:=300}"
-: "${NQN:=nqn.2014-08.org.nvmexpress.discovery}"
-# Use e.g. for root-path assignments or static IPs
-: "${DNSMASQ_EXTRA_OPTS:=}"
+MYDIR=${0%/*}
 
-: "${NVME_N_BRIDGES:=2}"
-: "${BRIDGE:=br_nvme}"
-: "${BR_MASK:=24}"
-: "${BR_PREFIX6:=64}"
+. "$MYDIR/defaults.sh"
+. "$MYDIR/functions.sh"
 
-: "${OVS_BRIDGE:=ovs_nvme}"
-: "${OVS_MASK:=24}"
-: "${OVS_PREFIX6:=64}"
-
-# Set this in network.conf to override the server name
-# in the DHCP root-path option (e.g. for using the IP address of the server)
-# the default is the server's FQDN
-: "${BR_RP_SERVER:=}"
-: "${OVS_RP_SERVER:=}"
-
-# Set to last element of gateway to enable routing
-# e.g. 5 for gateway 192.168.X.5 on all IPv4 networks
-: "${BR_GATEWAY_SUFFIX:=}"
-: "${OVS_GATEWAY:=}"
-
-# Directory where to store dnsmasq conf files
-# location may depend on security settings (Apparmor)
-: "${DNSMASQ_DIR:=/run/dnsmasq}"
-
-export LC_ALL=C
 CLEANUP_SCRIPT="$PWD/network/cleanup.sh"
 CLEANUP='rm -f "$CLEANUP_SCRIPT"'
-push_cleanup() {
-    CLEANUP="$@
-$CLEANUP"
-}
-
-br_ipv4() {
-    echo "$IP4_PREFIX.$((SUBNET_BASE - $1))."
-}
-
-br_ipv6() {
-    echo "$ULA_PREFIX:$((SUBNET_BASE - $1))::"
-}
-
-ovs_ipv4() {
-    echo "$IP4_PREFIX.$((SUBNET_BASE + $1))."
-}
-
-ovs_ipv6() {
-    echo "$ULA_PREFIX:$((SUBNET_BASE + $1))::"
-}
 
 # Used to generate the ansible input file.
 # We have this here in order to just need to calculate the networks
@@ -97,26 +36,6 @@ $yaml"
 $yaml"
     done
     sed "/^nvmet_networks:/a\\$yaml"
-}
-
-include_conf_file() {
-    local _user _flags _perm
-
-    [ -f "$1" ] || return 0
-
-    _user=$(stat -c %U "$1")
-    _perm=0$(stat -c %a "$1")
-    if [ "$_user" = "$SUDO_USER" ] || [ "$_user" = "$USER" ] && \
-	   [ $(( $_perm & 022)) -eq 0 ]; then
-	echo === importing settings from "$1" >&2
-	_flags="$(set +o)"
-	set -x
-	.  "./$1"
-	set +x
-	eval "$_flags"
-    else
-	echo === "$1" exists, but has unsafe permissions == >&2
-    fi
 }
 
 setup_bridge() {
@@ -203,10 +122,17 @@ ovs_vlan_xml() {
     done
 }
 
+ovs_trunk_xml() {
+    local id
+
+    for id in $(seq 1 "$NVME_N_VLANS"); do
+	echo "<tag id='$id'/>"
+    done
+}
+
 setup_ovs() {
     local active brdev
     local vlan_id
-    local vlan_xml
 
     [[ "$DO_OVS" ]] || return 0
 
@@ -239,8 +165,7 @@ EOF
 	# the libvirt network exists - make sure it maps to the correct bridge
 	[[ "$brdev" = "$OVS_BRIDGE" ]]
     else
-	echo "=== $0: creating OVS bridge $OVS_BRIDGE with VLANs $(seq 1 "$NVME_N_VLANS") ===" >&2
-	vlan_xml=$(ovs_vlan_xml)
+	echo "=== $0: creating OVS bridge $OVS_BRIDGE with VLANs $(seq -s " " 1 "$NVME_N_VLANS") ===" >&2
 	virsh -q net-define <(cat <<EOF
 <network>
   <name>$OVS_BRIDGE</name>
@@ -249,11 +174,11 @@ EOF
   <virtualport type='openvswitch'/>
   <portgroup name='trunk' default='yes'>
     <vlan trunk='yes'>
-      <tag id='$OVS_VLAN_ID'/>
+      $(ovs_trunk_xml)
     </vlan>
   </portgroup>
   <portgroup name='pg0'/>
-  ${vlan_xml}
+  $(ovs_vlan_xml)
 </network>
 EOF
 )
@@ -393,8 +318,6 @@ trap 'echo $0: line ${LINENO}: ERROR in \"$BASH_COMMAND\" >&2; exit 1' ERR
 trap 'trap - ERR; echo "=== $0: cleaning up ===" >&2; eval "$CLEANUP"' 0
 set -E
 
-[ "$UID" -eq 0 ] || exec sudo "$0"
-
 DO_OVS=
 if [ "$NVME_USE_OVS" = 1 ]; then
     DO_OVS=yes
@@ -410,17 +333,7 @@ done
 setup_ovs
 setup_dnsmasq
 
-cat >"$CLEANUP_SCRIPT" <<EOF
-#! /bin/bash
-$([ "$V" != 2 ] || echo 'set -x')
-[ \$UID -eq 0 ] || exec sudo "\$0"
-export LC_ALL=C
-
-! read -r pid < $DNSMASQ_DIR/dnsmasq-nvmeof.pid || kill \$pid
-EOF
-eval "echo \"$CLEANUP\"" >>"$CLEANUP_SCRIPT"
-chmod a+x "$CLEANUP_SCRIPT"
-
+write_cleanup_script
 trap - 0
-echo "=== $0: to clean up, run $CLEANUP_SCRIPT ==="
+
 exit 0
