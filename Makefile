@@ -21,7 +21,7 @@ include vm-config.mk
 
 # URL for downloading OVMF image
 OVMF_RELEASE ?= 0f54758
-OVMF_URL := https://github.com/timberland-sig/edk2/releases/download/release-0f54758/timberland-ovmf-release-0f54758.zip
+OVMF_URL := https://github.com/timberland-sig/edk2/releases/download/release-$(OVMF_RELEASE)/timberland-ovmf-release-$(OVMF_RELEASE).zip
 
 # Avoid shell syntax error below if vm-config.mk doesn't exist yet
 VLAN_ID ?= 0
