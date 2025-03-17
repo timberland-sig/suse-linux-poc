@@ -13,6 +13,7 @@ keys/
 mkdud
 nvmet-server/group_vars/nvme_servers
 network/cleanup.sh
+network/cleanup-router.sh
 nvmet-server/dependencies
 nvmet-server/server-running
 network.conf

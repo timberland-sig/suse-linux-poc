@@ -336,7 +336,8 @@ setup_ovs
 setup_dnsmasq
 [[ "$DO_OVS" != yes ]] || {
     "$MYDIR"/router.sh
-    push_cleanup "'$MYDIR'/cleanup-router.sh"
+    push_cleanup \
+	"[ -x '$MYDIR'/cleanup-router.sh ] && '$MYDIR'/cleanup-router.sh"
 }
 
 write_cleanup_script

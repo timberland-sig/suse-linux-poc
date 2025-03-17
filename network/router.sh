@@ -55,10 +55,13 @@ add_router() {
     [[ "$id1" ]]
     [[ "$id2" ]]
     [[ "$id1" -ge 0 ]]
-    [[ "$id1" -le "$NVME_N_VLANS" ]]
     [[ "$id2" -ge 0 ]]
-    [[ "$id2" -le "$NVME_N_VLANS" ]]
     [[ "$id1" -ne "$id2" ]]
+
+    [[ "$id1" -le "$NVME_N_VLANS" ]] && [[ "$id2" -le "$NVME_N_VLANS" ]] || {
+	echo "$0: ignoring $pair"
+	return
+    }
 
     name="${NVME_ROUTER_NETNS}${id1}:${id2}"
     ip6="$(printf "9:%02x%02x" "${id1}" "${id2}")"
@@ -87,12 +90,12 @@ add_routers() {
     done
 }
 
+[[ "$NVME_USE_OVS" = 1 ]] || exit 0
+[[ ! -f "$CLEANUP_SCRIPT" ]] || exit 0
+
 trap 'echo $0: line ${LINENO}: ERROR in \"$BASH_COMMAND\" >&2; exit 1' ERR
 trap 'trap - ERR; echo "=== $0: cleaning up ===" >&2; eval "$CLEANUP"' 0
 set -E
-
-[[ "$NVME_USE_OVS" = 1 ]] || exit 0
-[[ -f "$CLEANUP_SCRIPT" ]] || exit 0
 
 include_conf_file router.conf
 
