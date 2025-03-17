@@ -90,7 +90,9 @@ add_routers() {
 trap 'echo $0: line ${LINENO}: ERROR in \"$BASH_COMMAND\" >&2; exit 1' ERR
 trap 'trap - ERR; echo "=== $0: cleaning up ===" >&2; eval "$CLEANUP"' 0
 set -E
-[[ ! -f "$CLEANUP_SCRIPT" ]] && exit 0
+
+[[ "$NVME_USE_OVS" = 1 ]] || exit 0
+[[ -f "$CLEANUP_SCRIPT" ]] || exit 0
 
 include_conf_file router.conf
 

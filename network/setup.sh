@@ -334,8 +334,10 @@ for br in $(seq 1 "$NVME_N_BRIDGES"); do
 done
 setup_ovs
 setup_dnsmasq
-"$MYDIR"/router.sh
-push_cleanup "'$MYDIR'/cleanup-router.sh"
+[[ "$DO_OVS" != yes ]] || {
+    "$MYDIR"/router.sh
+    push_cleanup "'$MYDIR'/cleanup-router.sh"
+}
 
 write_cleanup_script
 trap - 0
