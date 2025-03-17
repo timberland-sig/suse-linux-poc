@@ -118,7 +118,7 @@ QEMU_OTHER_FLAGS="\
 
 case $VM_NETWORK_TYPE in
     bridge)
-	: "${VM_BRIDGE:=br_nvme}"
+	: "${VM_BRIDGE:=br_nvme1}"
 	QEMU_NET_FLAGS="\
 	-netdev bridge,id=n0,br=$VM_BRIDGE \
 	-device virtio-net-pci,netdev=n0,mac=$MAC0"

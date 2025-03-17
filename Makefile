@@ -31,7 +31,7 @@ VLAN_ID ?= 0
 # It is possible to override them for special setups.
 
 ifeq ($(VM_NETWORK_TYPE),bridge)
-VM_BRIDGE ?= br_nvme
+VM_BRIDGE ?= br_nvme1
 ifneq ($(subst 4,X,$(CONFIG)),$(CONFIG))
 SUBNET := $(IP4_PREFIX).$(shell printf %d $$(($(SUBNET_BASE)-1))).
 else
