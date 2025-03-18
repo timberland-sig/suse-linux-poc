@@ -42,7 +42,7 @@
 # Router advertisements
 : "${RA_INTERVAL:=30}"
 # Lease time (s)
-: "${DHCP_LEASETIME:=300}"
+: "${DHCP_LEASETIME:=3600}"
 : "${NQN:=nqn.2014-08.org.nvmexpress.discovery}"
 # Use e.g. for root-path assignments or static IPs
 : "${DNSMASQ_EXTRA_OPTS:=}"
