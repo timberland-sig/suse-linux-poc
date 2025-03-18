@@ -274,6 +274,15 @@ nvmet-server/group_vars/nvme_servers: uuid-$(VM_NAME).mk nvmet-server/group_vars
 	$(Q)sed -i 's/ffffffff-ffff-ffff-ffff-ffffffffff$(SUBSYS)/$(VM_UUID)/' $@
 	$(Q)sed -i 's/^max_namespaces:.*/max_namespaces: $(NVME_MAX_NAMESPACES)/' $@
 
+network/cleanup-dnsmasq.sh:
+	@echo "=== Starting dnsmasq"
+	$(Q)./network/dnsmasq.sh
+
+dnsmasq-up:	network/cleanup-dnsmasq.sh
+
+dnsmasq-down:
+	$(Q)[ ! -x ./network/cleanup-dnsmasq.sh ] || ./network/cleanup-dnsmasq.sh
+
 network/cleanup.sh:
 	@echo "=== Bringing up network"
 	$(Q)./network/setup.sh

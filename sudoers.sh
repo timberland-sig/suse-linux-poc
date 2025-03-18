@@ -24,7 +24,9 @@ Defaults!NVME_CMDS env_keep += "VM_NAME VM_UUID VM_OVMF_IMG VM_BRIDGE VM_ISO VM_
 NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_CMDS
 
 Cmd_Alias NVME_NET = $PWD/network/setup.sh "", $PWD/network/cleanup.sh "", \\\\
-	  $PWD/network/router.sh "", $PWD/network/cleanup-router.sh ""
+	  $PWD/network/router.sh "", $PWD/network/cleanup-router.sh "", \\\\
+	  $PWD/network/dnsmasq.sh "", $PWD/network/cleanup-dnsmasq.sh ""
+
 Defaults!NVME_NET env_keep += "NVME_USE_OVS NVME_N_BRIDGES NVME_N_VLANS V"
 NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_NET
 EOF

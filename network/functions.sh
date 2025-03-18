@@ -50,7 +50,6 @@ $([ "$V" != 2 ] || echo 'set -x')
 [ \$UID -eq 0 ] || exec sudo "\$0"
 export LC_ALL=C
 
-! read -r pid < $DNSMASQ_DIR/dnsmasq-nvmeof.pid || kill \$pid
 EOF
     eval "echo \"$CLEANUP\"" >>"$CLEANUP_SCRIPT"
     echo "rm -f '$CLEANUP_SCRIPT'" >>"$CLEANUP_SCRIPT"
