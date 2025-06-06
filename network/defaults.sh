@@ -71,3 +71,9 @@
 # Directory where to store dnsmasq conf files
 # location may depend on security settings (Apparmor)
 : "${DNSMASQ_DIR:=/run/dnsmasq}"
+
+# Set to some directory to enable PXE
+: "${DNSMASQ_PXE_ROOT:=}"
+
+# hostname of the VM host in DNS
+: "${DNSMASQ_NAME:="dad"}"

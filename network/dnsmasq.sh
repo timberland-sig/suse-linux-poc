@@ -13,6 +13,10 @@ MYDIR=${0%/*}
 CLEANUP_SCRIPT="$PWD/network/cleanup-dnsmasq.sh"
 CLEANUP=':'
 
+pxe_enabled() {
+    [[ "$DNSMASQ_PXE_ROOT" ]]
+}
+
 dnsmasq_net() {
     local IFACE=$1 IP4_SUBNET=$2 IP4_MASK=$3
     local IP4_GATEWAY=${4:+$IP4_SUBNET$4}
@@ -26,6 +30,7 @@ dnsmasq_net() {
 interface=$IFACE
 #local=/$IFACE/
 domain=$IFACE,${IP4_SUBNET}0/$IP4_MASK,local
+host-record=$DNSMASQ_NAME.nvmeof,$DNSMASQ_NAME.$IFACE,${IP4_SUBNET}1,[${IP6_PREFIX}1
 dhcp-host=$SERVER_NAME,${IP4_SUBNET}10,set:server,set:${IFACE}_4,$DHCP_LEASETIME
 
 dhcp-range=set:${IFACE}_4,${IP4_SUBNET}129,${IP4_SUBNET}254,$DHCP_LEASETIME
@@ -33,11 +38,15 @@ dhcp-option=tag:${IFACE}_4,option:router${IP4_GATEWAY:+,$IP4_GATEWAY}
 dhcp-option=tag:${IFACE}_4,option:dns-server,${IP4_SUBNET}1
 dhcp-option=tag:${IFACE}_4,option:root-path,"nvme+tcp://${ROOT_SERVER:-$SERVER_NAME.$IFACE}:4420/$NQN//"
 
+dhcp-boot=tag:${IFACE}_4,tag:tftp_uefi_x86_64,/boot/grub2/x86_64-efi/shim.efi,${IP4_SUBNET}1
+
 domain=$IFACE,${IP6_PREFIX}0/64,local
 dhcp-host=$SERVER_NAME,[${IP6_PREFIX}10],set:server,set:${IFACE}_6,64,$DHCP_LEASETIME
 dhcp-option=tag:${IFACE}_6,option6:dns-server,[${IP6_PREFIX}1]
 dhcp-range=set:${IFACE}_6,${IP6_PREFIX}80${IP6_END:+,${IP6_PREFIX}${IP6_END}}${IP6_RANGEOPT},64,$DHCP_LEASETIME
 ra-param=$IFACE,$RA_INTERVAL,$RA_TTL
+
+dhcp-option=tag:${IFACE}_6,tag:tftp_uefi_x86_64,option6:bootfile-url,tftp://[${IP6_PREFIX}1]/boot/grub2/x86_64-efi/shim.efi
 
 EOF
 }
@@ -46,6 +55,7 @@ setup_dnsmasq() {
     # IPv6: don't advertize a route, just the prefix
     local RA_TTL=0
     local IP6_END=ff IP6_RANGEOPT= ENABLE_RA=
+    local PXE_GLOBAL=
     local br vl
 
     mkdir -p "$DNSMASQ_DIR"
@@ -80,6 +90,17 @@ setup_dnsmasq() {
 	    ;;
     esac
 
+    if pxe_enabled; then
+	PXE_GLOBAL="\
+enable-tftp
+tftp-root=$DNSMASQ_PXE_ROOT
+dhcp-vendorclass=set:tftp_bios_x86_pc,PXEClient:Arch:00000
+dhcp-vendorclass=set:tftp_uefi_x86_64,PXEClient:Arch:00007
+dhcp-vendorclass=set:tftp_uefi_x86_64,PXEClient:Arch:00008
+dhcp-vendorclass=set:tftp_uefi_x86_64,PXEClient:Arch:00009
+"
+    fi
+
     [ ! "$BR_GATEWAY_SUFFIX" ] || RA_TTL=1800
     cat >"$DNSMASQ_DIR/dnsmasq-nvmeof.conf" <<EOF
 strict-order
@@ -95,6 +116,7 @@ dhcp-leasefile=/dev/null
 dhcp-fqdn
 domain=nvmeof
 $ENABLE_RA
+$PXE_GLOBAL
 $DNSMASQ_EXTRA_OPTS
 EOF
     for br in $(seq 1 "$NVME_N_BRIDGES"); do
