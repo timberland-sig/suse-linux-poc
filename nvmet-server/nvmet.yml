@@ -1,4 +1,3 @@
----
 - name: Setup nvmet Server
   hosts: nvme_servers
   gather_facts: yes
@@ -38,10 +37,22 @@
         name: firewalld
         state: restarted
 
+    - name: run netconfig
+      become: true
+      command: netconfig update -f
+
   roles:
     - role: nvmet
 
   tasks:
+    - name: configure dns policy
+      become: true
+      lineinfile:
+        path: /etc/sysconfig/network/config
+        line: NETCONFIG_DNS_POLICY="eth1 eth2 eth3"
+        regexp: ^NETCONFIG_DNS_POLICY=
+      notify: run netconfig
+
     - name: disable IPv6_rpfilter
       become: true
       lineinfile:
