@@ -88,7 +88,11 @@ endif
 ifeq ($(BASE_DIST),sle)
 SP := $(lastword $(subst ., ,$(VERSION)))
 VER := $(firstword $(subst ., ,$(VERSION)))
+ifeq ($(VER),15)
 ORIG_ISO := SLE-$(VER)-SP$(SP)-Full-x86_64-Media1.iso
+else
+ORIG_ISO := SLES-$(VERSION)-x86_64.install.iso
+endif
 else
 # Leap ISO image can be downloaded
 ISO_URL := https://download.opensuse.org/distribution/leap/$(VERSION)/iso
