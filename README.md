@@ -18,24 +18,47 @@ walkthrough for developers](BASIC.md).
 
 # Full Proof-of-Concept
 
-## Quick Start for the Impatient
+## Quick Start for the Impatient (EDK2 release 72976af and later)
 
  * Check the [Prerequisites](#prerequisites).
  * Run **make help-rootless** and apply the [suggested settings](#enabling-rootless-operation).
  * Run **make server-up**.
- * Run **make AUTOINST=1 inst**, hit ESC quickly after VM startup.
- * Open Boot Manager and start `EFI Internal Shell`, let `startup.nsh`
-   run. The boot menu will be displayed.
- * Open the boot manager again and watch out for an "NVMe" entry. If it
-   doesn't exist, something went wrong, see below.
- * Reset the VM from the EFI Menu, it will reboot.
+
+### Libvirt variant
+
+ * **libvirt:**
+   - Run `make libvirt`[^autoinst]. You'll see a message from libvirt that a new
+	 domain has been created.
+   - Open the newly created domain in virt-manager. Hit the `ESC` key when the
+	 Tiano Core logo is displayed.
+ * **Plain qemu:**
+   - Run **make inst**[^autoinst]. The VM will start up and the output will be
+   shown in the terminal.
+   - Hit `ESC` quickly after VM startup.
+ * In the BIOS setup menu, select `Device Manager`, then `NVMe-oF
+   Configuration`
+ * Select `Attempt 1`
+   - Select `NVM Subsystem: Enabled`
+   - Open "Network Device List", and select the only currently configured
+     interface[^vlan].
+   - For the simplest configuration, select `Enable DHCP` and `Subsystem info
+     from DHCP`.
+   - Select `Save Changes`.
+ * Back in the setup menu, reset the server.
  * Select the DVD as boot device. The Installation menu
    will be displayed.
- * Edit the `Installation` entry, and add `console=ttyS0` to the kernel
-   command line.
- * Start the installation.
- * After installation, the installed VM will boot from NVMe-oF. 
-   The root password is "timberland".
+ * **Plain qemu:** Edit the `Installation` entry, and add `console=ttyS0`
+   to the kernel command line.
+ * Start the installation and proceed as usual.
+ * After installation, the installed VM will boot from NVMe-oF.
+
+[^autoinst]: Add `AUTOINST=1` to the `make` command line to use fully
+    automatic installation. The root password after installtion in this mode
+    is "timberland". 
+
+[^vlan]: If you need or want to use a VLAN, you'll need to configure a VLAN in
+    the "VLAN Configuration" dialog, which is accessible from the `Device
+    Manager → Network Device List → MAC:...` page.
 
 ## Features
 
@@ -165,7 +188,7 @@ should work for your first installation. You can change the settings later.
 
 The PoC uses openSUSE Leap or SUSE Linux Enterprise (SLE)
 (`BASE_DIST` in `vm-config.mk`).
-Versions 15.4 and 15.5 are supported (`VERSION` in
+Versions 15.4 - 15.7 are supported (`VERSION` in
 `vm-config.mk`). If you have an installation medium (DVD) for the configured
 openSUSE distribution around, copy or link it to `install.iso` in the top directory.
 Otherwise, the next command will download the image from the internet[^iso].
