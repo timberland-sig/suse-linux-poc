@@ -61,3 +61,12 @@
         regexp: ^IPv6_rpfilter=
       notify: restart firewalld
 
+    - name: enable multihome separation in IPv4
+      become: true
+      copy:
+        dest: /etc/sysctl.d/arp.conf
+        content: |
+          # multihome separation - only announce interface-local addresses via
+          # arp
+          net.ipv4.conf.all.arp_ignore=2
+          net.ipv4.conf.all.arp_announce=2
