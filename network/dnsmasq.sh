@@ -103,6 +103,7 @@ dhcp-vendorclass=set:tftp_uefi_x86_64,enterprise:343,PXEClient:Arch:00007
 strict-order
 no-hosts
 no-resolv
+${DNSMASQ_FORWARDER:+server=$DNSMASQ_FORWARDER}
 except-interface=lo
 bind-dynamic
 bogus-priv

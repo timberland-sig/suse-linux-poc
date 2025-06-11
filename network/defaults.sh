@@ -77,3 +77,6 @@
 
 # hostname of the VM host in DNS
 : "${DNSMASQ_NAME:="dad"}"
+
+# DNS forwarder, if any
+: "${DNSMASQ_FORWARDER:=}"
