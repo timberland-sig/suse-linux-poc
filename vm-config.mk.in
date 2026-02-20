@@ -39,3 +39,7 @@ SUBSYS := 01
 BASE_DIST := leap
 # Always use leap versioning scheme, e.g. 15.4 here
 VERSION := 15.5
+
+# Set to 7-digit abbreviated git commit hash if you want a specific
+# timberland OVMF release
+# OVMF_RELEASE :=

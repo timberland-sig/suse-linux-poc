@@ -146,6 +146,7 @@ export ULA_PREFIX
 export IP4_PREFIX
 export SUBNET_BASE
 export SERVER_NAME
+export OVMF_RELEASE
 
 ALL_CFG := $(VLAN_ID)!$(AUTOINST)!$(CONFIG)!$(TARGET)!$(IPADDR)!$(SUBSYSNQN)
 OLD_CFG := $(file <current_config)
@@ -178,7 +179,7 @@ ifneq ($(ALL_CFG),$(file <current_config))
 .PHONY: current_config
 endif
 
-efitools/%.efi: ovmf/%.efi
+efitools/%.efi: ovmf-$(OVMF_RELEASE)/%.efi
 	$(Q)ln -f $< $@
 
 efidisk/%.efi: efitools/%.efi efidisk
@@ -188,7 +189,7 @@ current_config: vm-config.mk
 	@echo === new config: $(ALL_CFG)
 	$(Q)echo -n "$(ALL_CFG)" >$@
 
-efidisk keys vm ovmf:
+efidisk keys vm ovmf-$(OVMF_RELEASE):
 	$(Q)mkdir -p $@
 
 efidisk/startup.nsh:	vm-config.mk current_config efitools/startup.nsh | efidisk
@@ -244,9 +245,9 @@ endif
 $(ISO):	$(ORIG_ISO)
 	$(Q)ln -s $(ORIG_ISO) $(ISO)
 
-vm/$(VM_NAME)-vars.bin: ovmf/OVMF_VARS.fd | vm $(EFIDISK)
+vm/$(VM_NAME)-vars.bin: ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd | vm $(EFIDISK)
 	@echo === building $@ because of $?
-	$(Q)cp ovmf/OVMF_VARS.fd $@
+	$(Q)cp ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd $@
 
 vars:	vm/$(VM_NAME)-vars.bin
 
@@ -330,14 +331,14 @@ keys/repomd.xml.key:	| keys
 	cd keys && \
 	    wget -q $(PACKAGE_URL)/repodata/repomd.xml.key
 
-timberland-ovmf.zip:
+timberland-ovmf-$(OVMF_RELEASE).zip:
 	@echo === downloading OVMF firmware image from $(OVMF_URL)
-	$(Q)wget --no-use-server-timestamps -q -O timberland-ovmf.zip $(OVMF_URL)
+	$(Q)wget --no-use-server-timestamps -q -O $@ $(OVMF_URL)
 
-ovmf/NvmeOfCli.efi ovmf/VConfig.efi ovmf/OVMF_CODE.fd ovmf/OVMF_VARS.fd: timberland-ovmf.zip | ovmf
-	$(Q)unzip -d ovmf -o -DD timberland-ovmf.zip
+ovmf-$(OVMF_RELEASE)/NvmeOfCli.efi ovmf-$(OVMF_RELEASE)/VConfig.efi ovmf-$(OVMF_RELEASE)/OVMF_CODE.fd ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd &: timberland-ovmf-$(OVMF_RELEASE).zip | ovmf
+	$(Q)unzip -DD -d ovmf-$(OVMF_RELEASE) -o $<
 
-OVMF:	ovmf/OVMF_CODE.fd
+OVMF:	ovmf-$(OVMF_RELEASE)/OVMF_CODE.fd
 
 ifneq ($(PACKAGES),)
 $(PACKAGEDIR): keys/repomd.xml.key

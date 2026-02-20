@@ -72,7 +72,7 @@ QEMU_SERIAL_LOG="${QEMU_LOGGING:+/tmp/serial-"$VM_NAME".log}"
 # See https://github.com/timberland-sig/edk2/issues/2 for "-cpu host"
 : "${QEMU_BASE_FLAGS=-M q35 -m 1G -accel kvm -cpu host -uuid "$VM_UUID" -boot menu=on,splash-time=2000}"
 
-: "${BASE:=./ovmf}"
+: "${BASE:=./ovmf-$OVMF_RELEASE}"
 : "${OVMF_CODE:=$BASE/OVMF_CODE.fd}"
 : "${OVMF_VARS:=$BASE/OVMF_VARS.fd}"
 : "${MAC0:=$(echo "$VM_UUID" | sed -E 's/.*(..)(..)(..)/52:54:00:\1:\2:\3/')}"

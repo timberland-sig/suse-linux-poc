@@ -32,7 +32,7 @@ libvirt_network_name() {
 LV_NET=$(libvirt_network_name "$VM_BRIDGE")
 LV_PG=$(xsltproc --stringparam id "$VLAN_ID" "$LV_DIR/portgroup.xslt" <(virsh net-dumpxml "$LV_NET"))
 
-: "${BASE:=$MYDIR/ovmf}"
+: "${BASE:=$MYDIR/ovmf-$OVMF_RELEASE}"
 : "${OVMF_CODE:=$BASE/OVMF_CODE.fd}"
 : "${OVMF_VARS:=$BASE/OVMF_VARS.fd}"
 : "${MAC0:=$(echo "$VM_UUID" | sed -E 's/.*(..)(..)(..)/52:54:00:\1:\2:\3/')}"
