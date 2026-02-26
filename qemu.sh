@@ -11,7 +11,9 @@
 # Defaults!NVME_CMDS env_keep += "VM_NAME VM_UUID VM_BRIDGE VM_ISO VM_DUD VM_VGA_FLAGS"
 # NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_CMDS
 
+CLEANUP=:
 trap 'echo error in $BASH_COMMAND >&2; exit 1' ERR
+trap 'trap - 0; eval "$CLEANUP"' 0
 
 ## VM_xyz environment variables are normally passed from Makefile
 
@@ -24,8 +26,11 @@ trap 'echo error in $BASH_COMMAND >&2; exit 1' ERR
 : "${VM_NAME:=nbft}"
 : "${VM_UUID=$(uuidgen)}"
 : "${VM_NETWORK_TYPE:=ovs}" # "ovs" or "bridge"
+: "${VM_NETWORK_TYPE_1:=ovs}" # "ovs" or "bridge"
 
-[ "$VM_NETWORK_TYPE" = bridge ] || [ "$UID" = 0 ] || exec sudo "$0"
+if [[ $VM_NETWORK_TYPE = ovs || $VM_NETWORK_TYPE_1 = ovs ]]; then
+    [ "$UID" = 0 ] || exec sudo "$0"
+fi
 : "${VM_VGA_FLAGS:=-vga none -display none}"
 
 include_conf_file() {
@@ -76,6 +81,7 @@ QEMU_SERIAL_LOG="${QEMU_LOGGING:+/tmp/serial-"$VM_NAME".log}"
 : "${OVMF_CODE:=$BASE/OVMF_CODE.fd}"
 : "${OVMF_VARS:=$BASE/OVMF_VARS.fd}"
 : "${MAC0:=$(echo "$VM_UUID" | sed -E 's/.*(..)(..)(..)/52:54:00:\1:\2:\3/')}"
+: "${MAC1:=$(echo "$VM_UUID" | sed -E 's/.*(..)(..)(..)/52:54:01:\1:\2:\3/')}"
 
 VARS="$PWD/vm/$VM_NAME-vars.bin"
 
@@ -116,6 +122,23 @@ ${QEMU_OVMF_LOG:+-debugcon file:"$QEMU_OVMF_LOG" -global isa-debugcon.iobase=0x4
 QEMU_OTHER_FLAGS="\
 -object rng-builtin,id=rng0 -device virtio-rng,rng=rng0"
 
+TMPD=$(mktemp -d /tmp/qemu-nvmepoc.XXXXXXXX)
+
+make_ovs_scripts() {
+    cat >"$2-up" <<EOF
+#! /bin/sh
+/sbin/ip link set "\$1" up
+/usr/bin/ovs-vsctl add-port "$1" "\$1"
+EOF
+    cat >"$2-down" <<EOF
+#! /bin/sh
+/usr/bin/ovs-vsctl del-port "$1" "\$1"
+/sbin/ip addr flush dev "\$1"
+/sbin/ip link set "\$1" down
+EOF
+    chmod a+x "$2-up" "$2-down"
+}
+
 case $VM_NETWORK_TYPE in
     bridge)
 	: "${VM_BRIDGE:=br_nvme1}"
@@ -125,9 +148,26 @@ case $VM_NETWORK_TYPE in
 	;;
     ovs)
 	: "${VM_BRIDGE:=ovs_nvme}"
+	make_ovs_scripts "$VM_BRIDGE" "$TMPD/n0"
 	QEMU_NET_FLAGS="\
-	-netdev tap,id=n0,script=$PWD/ovs-ifup,downscript=$PWD/ovs-ifdown \
+	-netdev tap,id=n0,script=$TMPD/n0-up,downscript=$TMPD/n0-down \
 	-device virtio-net-pci,netdev=n0,mac=$MAC0"
+	;;
+esac
+
+case $VM_NETWORK_TYPE_1 in
+    bridge)
+	: "${VM_BRIDGE_1:=br_nvme1}"
+	QEMU_NET_FLAGS="$QEMU_NET_FLAGS \
+	-netdev bridge,id=n1,br=$VM_BRIDGE_1 \
+	-device virtio-net-pci,netdev=n1,mac=$MAC1"
+	;;
+    ovs)
+	: "${VM_BRIDGE_1:=ovs_nvme}"
+	make_ovs_scripts "$VM_BRIDGE_1" "$TMPD/n1"
+	QEMU_NET_FLAGS="$QEMU_NET_FLAGS \
+	-netdev tap,id=n1,script=$TMPD/n1-up,downscript=$TMPD/n1-down \
+	-device virtio-net-pci,netdev=n1,mac=$MAC1"
 	;;
 esac
 
