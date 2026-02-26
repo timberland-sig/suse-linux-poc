@@ -393,7 +393,8 @@ timberland-ovmf-$(OVMF_RELEASE).zip:
 	@echo === downloading OVMF firmware image from $(OVMF_URL)
 	$(Q)wget --no-use-server-timestamps -q -O $@ $(OVMF_URL)
 
-ovmf-$(OVMF_RELEASE)/NvmeOfCli.efi ovmf-$(OVMF_RELEASE)/VConfig.efi ovmf-$(OVMF_RELEASE)/OVMF_CODE.fd ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd &: timberland-ovmf-$(OVMF_RELEASE).zip | ovmf
+ovmf-$(OVMF_RELEASE)/NvmeOfCli.efi ovmf-$(OVMF_RELEASE)/VConfig.efi ovmf-$(OVMF_RELEASE)/OVMF_CODE.fd ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd: | timberland-ovmf-$(OVMF_RELEASE).zip ovmf-$(OVMF_RELEASE)
+	@echo === building $@ because of $?
 	$(Q)unzip -DD -d ovmf-$(OVMF_RELEASE) -o $<
 
 OVMF:	ovmf-$(OVMF_RELEASE)/OVMF_CODE.fd
