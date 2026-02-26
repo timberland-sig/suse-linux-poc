@@ -23,6 +23,12 @@ CONFIG := Static4
 # If emtpy, the networks will be isolated.
 USE_GW :=
 
+# Like the above, for the 2nd network interface
+VM_NETWORK_TYPE_1 :=
+VLAN_ID_1 :=
+CONFIG_1 :=
+USE_GW_1 :=
+
 ### NVME SETTINGS
 
 # Set to 1 to use NVMe discovery

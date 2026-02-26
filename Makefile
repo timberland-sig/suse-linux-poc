@@ -24,7 +24,8 @@ OVMF_RELEASE ?= 72976af
 OVMF_URL := https://github.com/timberland-sig/edk2/releases/download/release-$(OVMF_RELEASE)/timberland-ovmf-release-$(OVMF_RELEASE).zip
 
 # Avoid shell syntax error below if vm-config.mk doesn't exist yet
-VLAN_ID ?= 0
+VLAN_ID := $(if $(VLAN_ID),$(VLAN_ID),0)
+VLAN_ID_1 := $(if $(VLAN_ID_1),$(VLAN_ID_1),0)
 
 ### VM NETWORKING
 # VM_BRIDGE, TARGET, IPADDR, GATEWAY, SUBSYSNQN are set automatically here.
@@ -46,6 +47,27 @@ SUBNET := $(shell printf "%s:aa%02x::" "$(ULA_PREFIX)" $(VLAN_ID))
 endif
 endif
 
+ifeq ($(CONFIG_1),)
+TWO_IFACES := 0
+else
+TWO_IFACES := 1
+ifeq ($(VM_NETWORK_TYPE_1),bridge)
+VM_BRIDGE_1 ?= br_nvme1
+ifneq ($(subst 4,X,$(CONFIG_1)),$(CONFIG_1))
+SUBNET_1 := $(IP4_PREFIX).$(shell printf %d $$(($(SUBNET_BASE)-1))).
+else
+SUBNET_1 := $(shell printf "%s:bb%02x::" "$(ULA_PREFIX)" 1)
+endif
+else
+VM_BRIDGE_1 ?= ovs_nvme
+ifneq ($(subst 4,X,$(CONFIG)),$(CONFIG))
+SUBNET_1 := $(IP4_PREFIX).$(shell printf %d $$(($(SUBNET_BASE)+$(VLAN_ID_1)))).
+else
+SUBNET_1 := $(shell printf "%s:aa%02x::" "$(ULA_PREFIX)" $(VLAN_ID_1))
+endif
+endif
+endif
+
 # The nvmet server IP always ends in .10 or :10, e.g. fddf:d:f:55::10
 # The gateway / bridge IP always ends in .1 or :1
 TARGET ?= $(SUBNET)10
@@ -55,6 +77,17 @@ ifeq ($(USE_GW),)
 GATEWAY ?=
 else
 GATEWAY ?= $(SUBNET)1
+endif
+
+ifeq ($(TWO_IFACES),1)
+TARGET_1 ?= $(SUBNET_1)10
+# Local IP for static configurations
+IPADDR_1 ?= $(SUBNET_1)51
+ifeq ($(USE_GW_1),)
+GATEWAY_1 ?=
+else
+GATEWAY_1 ?= $(SUBNET_1)1
+endif
 endif
 
 NQN_PREFIX := nqn.2022-12.org.nvmexpress.boot.poc:$(shell echo "$${HOSTNAME%%.*}").vagrant-nvmet
@@ -133,7 +166,9 @@ export VM_NAME
 export NAME_PREFIX
 export VM_UUID
 export VM_BRIDGE
+export VM_BRIDGE_1
 export VM_NETWORK_TYPE
+export VM_NETWORK_TYPE_1
 export VM_VGA_FLAGS
 export NVME_MAX_NAMESPACES
 export STORAGE_POOL
@@ -141,6 +176,7 @@ export NVME_USE_OVS
 export NVME_N_BRIDGES
 export NVME_N_VLANS
 export VLAN_ID
+export VLAN_ID_1
 export LIBVIRT_DEFAULT_URI
 export ULA_PREFIX
 export IP4_PREFIX
