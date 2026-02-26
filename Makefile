@@ -148,6 +148,7 @@ endif
 
 EFI_EXES := NvmeOfCli.efi VConfig.efi
 .PRECIOUS: $(EFI_EXES:%=efitools/%)
+.INTERMEDIATE: efidisk/Config0 efidisk/Config1
 
 # distribution name to use for driver update disk, see mkdud man page
 DIST := $(BASE_DIST)$(VER)
@@ -235,33 +236,55 @@ ifneq ($(V),)
 	cat $@
 endif
 
+# make_config CONFIG VLAN_ID MACADDR IPADDR TARGET GATEWAY UUID FILE NR
 # The VLAN ID is appended to the Mac address using "\\%04x" format
-efidisk/Config: efidisk/startup.nsh config/$(CONFIG) $(EFI_EXES:%=efidisk/%) current_config
-	@echo === building $@ because of $?
-	$(Q)cp config/$(CONFIG) $@
-	$(Q)if [ $(VLAN_ID) -gt 0 ]; then \
-	    vid="\\\\$$(printf %04X $(VLAN_ID))"; \
+make_config = $(shell \
+	cp "config/$(1)" "$(8)"; \
+	if [ $(2) -gt 0 ]; then \
+	    vid="\\\\$$(printf %04X $(2))"; \
 	else \
             vid=""; \
 	fi; \
-	sed -i 's/MacString:.*/MacString:$(MACADDR)'"$$vid"'/' $@
-	$(Q)sed -i 's/uuid:.*/uuid:$(VM_UUID)/' $@
-	$(Q)sed -i 's/HostId:.*/HostId:$(VM_UUID)/' $@
-	$(Q)sed -i 's/HostName:.*/HostName:$(NAME_PREFIX)$(VM_NAME)/' $@
-	$(Q)[ ! "$(IPADDR)" ] || sed -i 's/LocalIp:.*/LocalIp:$(IPADDR)/' $@
-	$(Q)[ ! "$(TARGET)" ] || sed -i 's/TargetIp:.*/TargetIp:$(TARGET)/' $@
-	$(Q)if [ "$(GATEWAY)" ]; then \
-		sed -i 's/Gateway:.*/Gateway:$(GATEWAY)/' $@; \
+	sed -i '\
+s/AttemptName:.*/AttemptName:Attempt$(9)/;\
+s/MacString:.*/MacString:$(3)'"$$vid"'/;\
+s/uuid:.*/uuid:$(VM_UUID)/;\
+s/HostId:.*/HostId:$(VM_UUID)/;\
+s/HostName:.*/HostName:$(NAME_PREFIX)$(VM_NAME)/;\
+s/NQN:.*/NQN:$(SUBSYSNQN)/;\
+' $(8); \
+	[ ! "$(4)" ] || sed -i 's/LocalIp:.*/LocalIp:$(4)/' $(8); \
+	[ ! "$(5)" ] || sed -i 's/TargetIp:.*/TargetIp:$(5)/' $(8); \
+	if [ "$(6)" ]; then \
+		sed -i 's/Gateway:.*/Gateway:$(6)/' $(8); \
 	else \
-		sed -i '/Gateway:.*/d' $@; \
-	fi
-	$(Q)sed -i 's/NQN:.*/NQN:$(SUBSYSNQN)/' $@
+		sed -i '/Gateway:.*/d' $(8); \
+	fi; \
+	if [ "$(7)" ]; then \
+		sed -i '\
+s/uuid:.*/uuid:$(VM_UUID)/;\
+s/HostId:.*/HostId:$(VM_UUID)/;\
+' $(8); \
+	else \
+		sed -i '/HostNqn:/d;/HostId/d;' $(8); \
+	fi; \
+)
+
+efidisk/Config0: efidisk/startup.nsh config/$(CONFIG) current_config
+	$(call make_config,$(CONFIG),$(VLAN_ID),$(MACADDR),$(IPADDR),$(TARGET),$(GATEWAY),$(VM_UUID),$@,1)
+
+efidisk/Config1: efidisk/startup.nsh config/$(CONFIG_1) current_config
+	$(call make_config,$(CONFIG_1),$(VLAN_ID_1),$(MACADDR_1),$(IPADDR_1),$(TARGET_1),$(GATEWAY_1),,$@,2)
+
+efidisk/Config: efidisk/Config0 $(if $(CONFIG_1),efidisk/Config1,) efidisk/startup.nsh config/$(CONFIG_1) current_config
+	@echo === building $@ because of $?
+	$(Q)cat efidisk/Config0 $(if $(CONFIG_1),efidisk/Config1,) >$@
 ifneq ($(V),)
 	@echo === $@ ===
 	cat $@
 endif
 
-efidisk.img:	efidisk/Config
+efidisk.img:	efidisk/Config $(EFI_EXES:%=efidisk/%)
 	@echo === building $@ because of $?
 	$(Q)truncate -s $(EFIDISK_MB)M $@
 	$(Q)mformat -v EFI-NBFT -h 2 -s 1024 -t $(EFIDISK_MB) -i $@ "::"
