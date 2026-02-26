@@ -229,7 +229,7 @@ efidisk keys vm ovmf-$(OVMF_RELEASE):
 
 efidisk/startup.nsh:	vm-config.mk current_config efitools/startup.nsh | efidisk
 	@echo === building $@ because of $?
-	$(Q)sed 's/@VLAN_ID@/$(VLAN_ID)/;s/@OLD_VLAN_ID@/$(OLD_VLAN_ID)/' efitools/startup.nsh >$@
+	$(Q)sed 's/@TWO_IFACES@/$(TWO_IFACES)/;s/@VLAN_ID@/$(VLAN_ID)/;s/@OLD_VLAN_ID@/$(OLD_VLAN_ID)/;s/@VLAN_ID_1@/$(VLAN_ID_1)/;s/@OLD_VLAN_ID_1@/$(OLD_VLAN_ID_1)/' efitools/startup.nsh >$@
 ifneq ($(V),)
 	@echo === $@ ===
 	cat $@
