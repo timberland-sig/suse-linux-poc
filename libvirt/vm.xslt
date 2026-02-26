@@ -10,6 +10,9 @@
   <xsl:param name="network"/>
   <xsl:param name="portgroup"/>
   <xsl:param name="mac_address"/>
+  <xsl:param name="network1"/>
+  <xsl:param name="portgroup1"/>
+  <xsl:param name="mac_address1"/>
   <xsl:param name="iso"/>
   <xsl:param name="dud"/>
   <xsl:param name="ovmf_log"/>
@@ -150,6 +153,41 @@
       <xsl:apply-templates select="node()[name(.)!='source' and name(.)!='mac'
 				   and name(.)!='rom']"/>
     </interface>
+  </xsl:template>
+  <xsl:template match="/domain/devices/interface[@type='network' and
+		       position()='2']">
+    <xsl:if test="$network1!=''">
+      <interface>
+	<xsl:attribute name="type">network1</xsl:attribute>
+	<xsl:apply-templates select="@*"/>
+	<mac>
+	  <xsl:attribute name="address">
+	    <xsl:call-template name="set-or-default">
+	      <xsl:with-param name="passed" select="$mac_address1"/>
+	      <xsl:with-param name="default" select="mac/@address"/>
+	    </xsl:call-template>
+	  </xsl:attribute>
+	</mac>
+	<source>
+	  <xsl:attribute name="network">
+	    <xsl:call-template name="set-or-default">
+	      <xsl:with-param name="passed" select="$network1"/>
+	      <xsl:with-param name="default" select="source/@network"/>
+	    </xsl:call-template>
+	  </xsl:attribute>
+	  <xsl:if test="not($portgroup1='')">
+	    <xsl:attribute name="portgroup">
+	      <xsl:value-of select="$portgroup1"/>
+	    </xsl:attribute>
+	  </xsl:if>
+	</source>
+	<rom>
+	  <xsl:attribute name="enabled">no</xsl:attribute>
+	</rom>
+	<xsl:apply-templates select="node()[name(.)!='source' and name(.)!='mac'
+				     and name(.)!='rom']"/>
+      </interface>
+    </xsl:if>
   </xsl:template>
   <xsl:template match="/domain/devices/disk[@device='disk'][position()='1']/source">
     <xsl:if test="$efidisk!=''">
