@@ -5,9 +5,10 @@ efidisk.img
 efitools/NvmeOfCli.efi
 env-config.mk
 vm-config.mk
+*-config.mk
 uuid*.mk
 timberland-ovmf.zip
-ovmf/
+ovmf-???????/
 packages/
 keys/
 mkdud
@@ -25,3 +26,4 @@ vm/
 current_config
 .vagrant
 autoinst.xml
+timberland-ovmf-*.zip
