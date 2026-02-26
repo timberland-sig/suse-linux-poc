@@ -124,6 +124,7 @@ ovs_vlan_xml() {
 ovs_trunk_xml() {
     local id
 
+    echo "<tag id='0' nativeMode='untagged'/>"
     for id in $(seq 1 "$NVME_N_VLANS"); do
 	echo "<tag id='$id'/>"
     done
