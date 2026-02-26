@@ -184,15 +184,14 @@ export SUBNET_BASE
 export SERVER_NAME
 export OVMF_RELEASE
 
-ALL_CFG := $(VLAN_ID)!$(AUTOINST)!$(CONFIG)!$(TARGET)!$(IPADDR)!$(SUBSYSNQN)
+ALL_CFG := $(VLAN_ID)!$(AUTOINST)!$(CONFIG)!$(TARGET)!$(IPADDR)!$(SUBSYSNQN)$(if $(CONFIG_1),;$(VLAN_ID_1)!$(CONFIG_1)!$(TARGET_1)!$(IPADDR_1),)
 OLD_CFG := $(file <current_config)
-OLD_VLAN_ID := $(shell x="$(OLD_CFG)"; echo "$${x%%!*}")
-ifeq ($(OLD_VLAN_ID),)
-    OLD_VLAN_ID := 0
-endif
+OLD_VLAN_ID := $(shell x="$(OLD_CFG)"; x=$${x%%!*}; echo "$${x:-0}")
+OLD_VLAN_ID_1 := $(shell x="$(OLD_CFG)"; x=$${x\#*;}; x=$${x%%!*}; echo "$${x:-0}")
 
 # Derive MAC from uuid
 MACADDR := $(shell echo $(VM_UUID) | sed -E 's/.*(..)(..)(..)/52:54:00:\1:\2:\3/;y/abcdef/ABCDEF/')
+MACADDR_1 := $(shell echo $(VM_UUID) | sed -E 's/.*(..)(..)(..)/52:54:01:\1:\2:\3/;y/abcdef/ABCDEF/')
 
 V :=
 Q := $(if $(V),,@)
@@ -222,7 +221,7 @@ efidisk/%.efi: efitools/%.efi efidisk
 	$(Q)ln -f $< $@
 
 current_config: vm-config.mk
-	@echo === new config: $(ALL_CFG)
+	@echo === new config: "$(ALL_CFG)"
 	$(Q)echo -n "$(ALL_CFG)" >$@
 
 efidisk keys vm ovmf-$(OVMF_RELEASE):
