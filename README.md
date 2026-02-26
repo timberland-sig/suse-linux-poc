@@ -126,7 +126,7 @@ match your environment:
     Host_Alias NVME_HOSTS = workstation
     Cmd_Alias NVME_CMDS = /home/joe/nvme-poc/qemu.sh ""
     Cmd_Alias NVME_NET = /home/joe/nvme-poc/network/setup.sh "", /home/joe/nvme-poc/network/cleanup.sh ""
-    Defaults!NVME_CMDS env_keep += "VM_NAME VM_UUID VM_OVMF_IMG VM_BRIDGE VM_ISO VM_DUD VM_VGA_FLAGS V"
+    Defaults!NVME_CMDS env_keep += "VM_NAME VM_UUID OVMF_RELEASE VM_BRIDGE VM_BRIDGE_1 VM_ISO VM_DUD VM_VGA_FLAGS V"
     Defaults!NVME_NET env_keep += "NVME_USE_OVS V"
     NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_CMDS
     NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_NET

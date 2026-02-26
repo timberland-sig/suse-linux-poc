@@ -20,7 +20,7 @@ User_Alias NVME_USERS = $USER
 Host_Alias NVME_HOSTS = $hostn
 
 Cmd_Alias NVME_CMDS = $PWD/qemu.sh ""
-Defaults!NVME_CMDS env_keep += "VM_NAME VM_UUID VM_OVMF_IMG VM_BRIDGE VM_ISO VM_DUD VM_VGA_FLAGS V"
+Defaults!NVME_CMDS env_keep += "VM_NAME VM_NETWORK_TYPE VM_NETWORK_TYPE_1 VM_UUID OVMF_RELEASE VM_BRIDGE VM_BRIDGE_1 VM_ISO VM_DUD VM_VGA_FLAGS V"
 NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_CMDS
 
 Cmd_Alias NVME_NET = $PWD/network/setup.sh "", $PWD/network/cleanup.sh "", \\\\
