@@ -223,7 +223,7 @@ tools/%: tools/%.c
 efitools/%.efi: ovmf-$(OVMF_RELEASE)/%.efi
 	$(Q)ln -f $< $@
 
-efidisk/%.efi: efitools/%.efi efidisk
+efidisk/%.efi: efitools/%.efi | efidisk
 	$(Q)ln -f $< $@
 
 current_config: vm-config.mk
