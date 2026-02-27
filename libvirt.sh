@@ -30,18 +30,8 @@ libvirt_network_name() {
 }
 
 LV_NET=$(libvirt_network_name "$VM_BRIDGE")
-if [[ $VLAN_ID = 0 ]]; then
-    LV_PG=$(xsltproc --stringparam id "$VLAN_ID" "$LV_DIR/portgroup.xslt" <(virsh net-dumpxml "$LV_NET"))
-else
-    LV_PG=trunk
-fi
 if [[ $VM_BRIDGE_1 ]]; then
     LV_NET_1=$(libvirt_network_name "$VM_BRIDGE_1")
-    if [[ $VLAN_ID_1 = 0 ]]; then
-	LV_PG_1=$(xsltproc --stringparam id "$VLAN_ID_1" "$LV_DIR/portgroup.xslt" <(virsh net-dumpxml "$LV_NET_1"))
-    else
-	LV_PG_1=trunk
-    fi
 fi
 
 : "${BASE:=$MYDIR/ovmf-$OVMF_RELEASE}"
@@ -67,10 +57,10 @@ xsltproc \
     --stringparam ovmf_code "$OVMF_CODE" \
     --stringparam ovmf_vars "$VARS" \
     --stringparam network "$LV_NET" \
-    --stringparam portgroup "$LV_PG" \
+    --stringparam portgroup "trunk" \
     --stringparam mac_address "$MAC0" \
     --stringparam network1 "$LV_NET_1" \
-    --stringparam portgroup1 "$LV_PG_1" \
+    --stringparam portgroup1 "trunk" \
     --stringparam mac_address1 "$MAC1" \
     --stringparam iso "${VM_ISO:+$MYDIR/$VM_ISO}" \
     --stringparam dud "${VM_DUD:+$MYDIR/$VM_DUD}" \
