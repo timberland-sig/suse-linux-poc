@@ -189,6 +189,7 @@ export IP4_PREFIX
 export SUBNET_BASE
 export SERVER_NAME
 export OVMF_RELEASE
+export EXT_BRIDGE
 
 ALL_CFG := $(VLAN_ID)!$(AUTOINST)!$(CONFIG)!$(TARGET)!$(IPADDR)!$(SUBSYSNQN)$(if $(CONFIG_1),;$(VLAN_ID_1)!$(CONFIG_1)!$(TARGET_1)!$(IPADDR_1)!$(SUBSYSNQN_1),)
 OLD_CFG := $(file <current_config)

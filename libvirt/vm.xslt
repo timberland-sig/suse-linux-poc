@@ -13,6 +13,8 @@
   <xsl:param name="network1"/>
   <xsl:param name="portgroup1"/>
   <xsl:param name="mac_address1"/>
+  <xsl:param name="ext_network"/>
+  <xsl:param name="ext_mac"/>
   <xsl:param name="iso"/>
   <xsl:param name="dud"/>
   <xsl:param name="ovmf_log"/>
@@ -186,6 +188,32 @@
 	</rom>
 	<xsl:apply-templates select="node()[name(.)!='source' and name(.)!='mac'
 				     and name(.)!='rom']"/>
+      </interface>
+    </xsl:if>
+  </xsl:template>
+  <xsl:template match="/domain/devices/interface[@type='network' and
+		       position()='3']">
+    <xsl:if test="$ext_network!=''">
+      <interface>
+	<xsl:attribute name="type">network1</xsl:attribute>
+	<xsl:apply-templates select="@*"/>
+	<mac>
+	  <xsl:attribute name="address">
+	    <xsl:call-template name="set-or-default">
+	      <xsl:with-param name="passed" select="$ext_mac"/>
+	      <xsl:with-param name="default" select="mac/@address"/>
+	    </xsl:call-template>
+	  </xsl:attribute>
+	</mac>
+	<source>
+	  <xsl:attribute name="network">
+	    <xsl:call-template name="set-or-default">
+	      <xsl:with-param name="passed" select="$ext_network"/>
+	      <xsl:with-param name="default" select="source/@network"/>
+	    </xsl:call-template>
+	  </xsl:attribute>
+	</source>
+	<xsl:apply-templates select="node()[name(.)!='source' and name(.)!='mac']"/>
       </interface>
     </xsl:if>
   </xsl:template>

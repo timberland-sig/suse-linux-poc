@@ -171,6 +171,12 @@ case $VM_NETWORK_TYPE_1 in
 	;;
 esac
 
+if [[ $EXT_BRIDGE ]]; then
+    QEMU_NET_FLAGS="$QEMU_NET_FLAGS \
+	-netdev bridge,id=n2,br=$EXT_BRIDGE \
+	-device virtio-net-pci,netdev=n2"
+fi
+
 set -x
 $QEMU \
     $QEMU_BASE_FLAGS \

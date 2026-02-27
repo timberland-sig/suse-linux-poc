@@ -33,6 +33,9 @@ LV_NET=$(libvirt_network_name "$VM_BRIDGE")
 if [[ $VM_BRIDGE_1 ]]; then
     LV_NET_1=$(libvirt_network_name "$VM_BRIDGE_1")
 fi
+if [[ $EXT_BRIDGE ]]; then
+    EXT_NET=$(libvirt_network_name "$EXT_BRIDGE")
+fi
 
 : "${BASE:=$MYDIR/ovmf-$OVMF_RELEASE}"
 : "${OVMF_CODE:=$BASE/OVMF_CODE.fd}"
@@ -69,4 +72,5 @@ xsltproc \
     --stringparam iso "${VM_ISO:+$MYDIR/$VM_ISO}" \
     --stringparam dud "${VM_DUD:+$MYDIR/$VM_DUD}" \
     --stringparam efidisk "$EFIDISK" \
+    --stringparam ext_network "$EXT_NET" \
     "$LV_DIR/vm.xslt" "$LV_DIR/vm.xml"

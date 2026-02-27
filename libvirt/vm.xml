@@ -62,6 +62,12 @@
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x03' slot='0x00' function='0x0'/>
     </interface>
+    <interface type='network'>
+      <mac address='52:54:00:4f:97:eb'/>
+      <source network='host0'/>
+      <model type='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x04' slot='0x00' function='0x0'/>
+    </interface>
     <serial type='pty'>
       <target type='isa-serial' port='0'>
 	<model name='isa-serial'/>

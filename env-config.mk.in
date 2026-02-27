@@ -43,3 +43,7 @@ NVME_MAX_NAMESPACES := 2
 
 # vagrant-libvirt storage pool to use
 STORAGE_POOL := default
+
+# Name of a bridge device to use for external networking, e.g. "virbr1"
+EXT_BRIDGE :=
+
