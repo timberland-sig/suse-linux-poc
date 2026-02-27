@@ -335,7 +335,7 @@ qemu:	vm/$(VM_NAME)-vars.bin
 	@echo "Starting VM with UUID=$(VM_UUID) (kill with Ctrl-b x)"
 	$(Q)VM_ISO= ./qemu.sh
 
-vm/$(VM_NAME).xml:	| vm $(if $(MODIFY_OVMF_VARS),,efidisk.img)
+vm/$(VM_NAME).xml:	libvirt/vm.xml libvirt/vm.xslt | vm $(if $(MODIFY_OVMF_VARS),,efidisk.img)
 	@echo === building $@ because of $?
 	$(Q)VM_ISO=$(ISO) VM_DUD=$(DUD) ./libvirt.sh >$@
 
