@@ -97,6 +97,11 @@ SUBSYSNQN ?= $(NQN_PREFIX).subsys$(SUBSYS)
 else
 SUBSYSNQN ?= nqn.2014-08.org.nvmexpress.discovery
 endif
+ifeq ($(DISCOVERY_1),)
+SUBSYSNQN_1 ?= $(NQN_PREFIX).subsys$(SUBSYS)
+else
+SUBSYSNQN_1 ?= nqn.2014-08.org.nvmexpress.discovery
+endif
 
 ### END CUSTOMIZATION SECTION ###
 
@@ -185,7 +190,7 @@ export SUBNET_BASE
 export SERVER_NAME
 export OVMF_RELEASE
 
-ALL_CFG := $(VLAN_ID)!$(AUTOINST)!$(CONFIG)!$(TARGET)!$(IPADDR)!$(SUBSYSNQN)$(if $(CONFIG_1),;$(VLAN_ID_1)!$(CONFIG_1)!$(TARGET_1)!$(IPADDR_1),)
+ALL_CFG := $(VLAN_ID)!$(AUTOINST)!$(CONFIG)!$(TARGET)!$(IPADDR)!$(SUBSYSNQN)$(if $(CONFIG_1),;$(VLAN_ID_1)!$(CONFIG_1)!$(TARGET_1)!$(IPADDR_1)!$(SUBSYSNQN_1),)
 OLD_CFG := $(file <current_config)
 OLD_VLAN_ID := $(shell x="$(OLD_CFG)"; x=$${x%%!*}; echo "$${x:-0}")
 OLD_VLAN_ID_1 := $(shell x="$(OLD_CFG)"; x=$${x\#*;}; x=$${x%%!*}; echo "$${x:-0}")
@@ -240,7 +245,7 @@ ifneq ($(V),)
 	cat $@
 endif
 
-# make_config CONFIG VLAN_ID MACADDR IPADDR TARGET GATEWAY UUID FILE NR
+# make_config CONFIG VLAN_ID MACADDR IPADDR TARGET GATEWAY UUID FILE NR SUBSYSNQN
 # The VLAN ID is appended to the Mac address using "\\%04x" format
 make_config = $(shell \
 	cp "config/$(1)" "$(8)"; \
@@ -255,7 +260,8 @@ s/MacString:.*/MacString:$(3)'"$$vid"'/;\
 s/uuid:.*/uuid:$(VM_UUID)/;\
 s/HostId:.*/HostId:$(VM_UUID)/;\
 s/HostName:.*/HostName:$(NAME_PREFIX)$(VM_NAME)/;\
-s/NQN:.*/NQN:$(SUBSYSNQN)/;\
+s/NQN:.*/NQN:$(10)/;\
+s/ConnectTimeout:.*/ConnectTimeout:1000/;\
 ' $(8); \
 	[ ! "$(4)" ] || sed -i 's/LocalIp:.*/LocalIp:$(4)/' $(8); \
 	[ ! "$(5)" ] || sed -i 's/TargetIp:.*/TargetIp:$(5)/' $(8); \
