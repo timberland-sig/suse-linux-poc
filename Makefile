@@ -454,10 +454,11 @@ libvirt-clean:x
 	$(Q)virsh undefine --nvram $(NAME_PREFIX)$(VM_NAME)
 	$(Q)rm -f vm/$(VM_NAME).xml
 
+# This does not remove the ovmf-* subdirectories
 clean:	net-down vars-clean
-	$(Q)rm -rf efidisk packages keys ovmf
-	$(Q)rm -f efidisk.img $(DUD) *~ vm/*~ vm/*.xml current_config timberland-ovmf.zip
+	$(Q)rm -rf efidisk packages keys
 	$(Q)rm -f $(OVMF_TOOLS)
+	$(Q)rm -f efidisk.img $(DUD) *~ vm/*~ vm/*.xml current_config timberland-ovmf-*.zip
 	$(Q)rm -f mkdud efitools/NvmeOfCli.efi install.iso autoinst.xml
 	$(Q)rm -f nvmet-server/group_vars/nvme_servers vm-config.mk env-config.mk
 
