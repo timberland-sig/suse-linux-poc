@@ -224,10 +224,7 @@ OVMF_TOOLS := tools/ovmf_vars_dump tools/ovmf_vars_set
 tools/%: tools/%.c
 	$(CC) -Wall -g -O2 -o $@ $^
 
-efitools/%.efi: ovmf-$(OVMF_RELEASE)/%.efi
-	$(Q)ln -f $< $@
-
-efidisk/%.efi: efitools/%.efi | efidisk
+efidisk/%.efi: ovmf-$(OVMF_RELEASE)/%.efi | efidisk
 	$(Q)ln -f $< $@
 
 current_config: vm-config.mk
