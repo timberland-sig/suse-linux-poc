@@ -308,9 +308,12 @@ endif
 $(ISO):	$(ORIG_ISO)
 	$(Q)ln -s $(ORIG_ISO) $(ISO)
 
-vm/$(VM_NAME)-vars.bin: ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd | vm $(EFIDISK)
+vm/$(VM_NAME)-vars.bin: ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd $(if $(MODIFY_OVMF_VARS),efidisk/Config tools/ovmf_vars_set) | vm $(EFIDISK)
 	@echo === building $@ because of $?
 	$(Q)cp ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd $@
+ifneq ($(MODIFY_OVMF_VARS),)
+	$(Q)tools/ovmf_vars_set "$@" efidisk/Config
+endif
 
 vars:	vm/$(VM_NAME)-vars.bin
 
@@ -322,7 +325,7 @@ qemu:	vm/$(VM_NAME)-vars.bin
 	@echo "Starting VM with UUID=$(VM_UUID) (kill with Ctrl-b x)"
 	$(Q)VM_ISO= ./qemu.sh
 
-vm/$(VM_NAME).xml:	| vm efidisk.img
+vm/$(VM_NAME).xml:	| vm $(if $(MODIFY_OVMF_VARS),,efidisk.img)
 	@echo === building $@ because of $?
 	$(Q)VM_ISO=$(ISO) VM_DUD=$(DUD) ./libvirt.sh >$@
 
