@@ -95,7 +95,7 @@ VARS="$PWD/vm/$VM_NAME-vars.bin"
 if [ -f ./efidisk.img ] && [ ! ./efidisk.img -ot ./efidisk/Config ]; then
     QEMU_IMG_FLAGS="\
 -drive format=raw,file=./efidisk.img,media=disk"
-else
+elif [ -f ./efidisk/Config ]; then
     QEMU_IMG_FLAGS="\
 -drive format=raw,file=fat:rw:./efidisk"
 fi

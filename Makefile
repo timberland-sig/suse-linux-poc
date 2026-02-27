@@ -148,7 +148,6 @@ endif
 
 EFI_EXES := NvmeOfCli.efi VConfig.efi
 .PRECIOUS: $(EFI_EXES:%=efitools/%)
-.INTERMEDIATE: efidisk/Config0 efidisk/Config1
 .SUFFIXES:
 
 # distribution name to use for driver update disk, see mkdud man page
@@ -157,7 +156,7 @@ DIST := $(BASE_DIST)$(VER)
 # Size of EFI disk
 EFIDISK_MB := 2
 
-EFIDISK := efidisk/Config
+CONFIG_FILE := vm/$(VM_NAME).conf
 
 LIBVIRT_DEFAULT_URI := qemu:///system
 
@@ -275,19 +274,24 @@ s/HostId:.*/HostId:$(VM_UUID)/;\
 	fi; \
 )
 
-efidisk/Config0: config/$(CONFIG) current_config
-	$(call make_config,$(CONFIG),$(VLAN_ID),$(MACADDR),$(IPADDR),$(TARGET),$(GATEWAY),$(VM_UUID),$@,1)
+.INTERMEDIATE: $(CONFIG_FILE)0 $(CONFIG_FILE)1
 
-efidisk/Config1: config/$(CONFIG_1) current_config
-	$(call make_config,$(CONFIG_1),$(VLAN_ID_1),$(MACADDR_1),$(IPADDR_1),$(TARGET_1),$(GATEWAY_1),,$@,2)
+$(CONFIG_FILE)0: config/$(CONFIG) current_config | vm
+	$(call make_config,$(CONFIG),$(VLAN_ID),$(MACADDR),$(IPADDR),$(TARGET),$(GATEWAY),$(VM_UUID),$@,1,$(SUBSYSNQN))
 
-efidisk/Config: efidisk/Config0 $(if $(CONFIG_1),efidisk/Config1,) config/$(CONFIG_1) current_config
+$(CONFIG_FILE)1: config/$(CONFIG_1) current_config | vm
+	$(call make_config,$(CONFIG_1),$(VLAN_ID_1),$(MACADDR_1),$(IPADDR_1),$(TARGET_1),$(GATEWAY_1),,$@,2,$(SUBSYSNQN_1))
+
+$(CONFIG_FILE): $(CONFIG_FILE)0 $(if $(CONFIG_1),$(CONFIG_FILE)1,) config/$(CONFIG_1) current_config
 	@echo === building $@ because of $?
-	$(Q)cat efidisk/Config0 $(if $(CONFIG_1),efidisk/Config1,) >$@
+	$(Q)cat $(CONFIG_FILE)0 $(if $(CONFIG_1),$(CONFIG_FILE)1,) >$@
 ifneq ($(V),)
 	@echo === $@ ===
 	cat $@
 endif
+
+efidisk/Config: $(CONFIG_FILE) current_config efidisk
+	$(Q)cp -f $(CONFIG_FILE) $@
 
 efidisk.img:	efidisk/Config efidisk/startup.nsh $(EFI_EXES:%=efidisk/%)
 	@echo === building $@ because of $?
@@ -308,11 +312,11 @@ endif
 $(ISO):	$(ORIG_ISO)
 	$(Q)ln -s $(ORIG_ISO) $(ISO)
 
-vm/$(VM_NAME)-vars.bin: ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd $(if $(MODIFY_OVMF_VARS),efidisk/Config tools/ovmf_vars_set) | vm $(EFIDISK)
+vm/$(VM_NAME)-vars.bin: ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd $(if $(MODIFY_OVMF_VARS),$(CONFIG_FILE) tools/ovmf_vars_set) | vm
 	@echo === building $@ because of $?
 	$(Q)cp ovmf-$(OVMF_RELEASE)/OVMF_VARS.fd $@
 ifneq ($(MODIFY_OVMF_VARS),)
-	$(Q)tools/ovmf_vars_set "$@" efidisk/Config
+	$(Q)tools/ovmf_vars_set "$@" $(CONFIG_FILE)
 endif
 
 vars:	vm/$(VM_NAME)-vars.bin

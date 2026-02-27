@@ -34,6 +34,9 @@ USE_GW_1 :=
 # Set to 1 to use NVMe discovery
 DISCOVERY:=
 
+# Same for 2nd attempt
+DISCOVERY_1 :=
+
 # If DISCOVERY is emtpy, subsystem number to use to construct subsystem NQN
 # If subsys <= NVME_MAX_NAMESPACES, this subsys will be auto-enabled for
 # the UUID of VM_NAME

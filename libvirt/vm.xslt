@@ -189,13 +189,16 @@
       </interface>
     </xsl:if>
   </xsl:template>
-  <xsl:template match="/domain/devices/disk[@device='disk'][position()='1']/source">
+  <xsl:template match="/domain/devices/disk[@device='disk'][position()='1']">
     <xsl:if test="$efidisk!=''">
-      <source>
-	<xsl:attribute name="file">
-	  <xsl:value-of select="$efidisk"/>
-	</xsl:attribute>
-      </source>
+      <disk>
+	<xsl:apply-templates select="@*|node()"/>
+	<source>
+	  <xsl:attribute name="file">
+	    <xsl:value-of select="$efidisk"/>
+	  </xsl:attribute>
+	</source>
+      </disk>
     </xsl:if>
   </xsl:template>
   <xsl:template match="/domain">
