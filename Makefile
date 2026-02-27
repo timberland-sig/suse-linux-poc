@@ -149,6 +149,7 @@ endif
 EFI_EXES := NvmeOfCli.efi VConfig.efi
 .PRECIOUS: $(EFI_EXES:%=efitools/%)
 .INTERMEDIATE: efidisk/Config0 efidisk/Config1
+.SUFFIXES:
 
 # distribution name to use for driver update disk, see mkdud man page
 DIST := $(BASE_DIST)$(VER)
