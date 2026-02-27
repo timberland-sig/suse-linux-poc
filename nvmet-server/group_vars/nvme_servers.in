@@ -48,7 +48,7 @@ all_nvme_subsystems:
 # IPv4 and IPv6 networks need to be listed separately
 # This will be filled in by "network/setup.sh networks" when
 # nvme_servers is generated from template
-nvme_networks:
+nvmet_networks:
 
 ### Experts only below here ###
 

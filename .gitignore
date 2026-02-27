@@ -5,14 +5,17 @@ efidisk.img
 efitools/NvmeOfCli.efi
 env-config.mk
 vm-config.mk
+*-config.mk
 uuid*.mk
 timberland-ovmf.zip
-ovmf/
+ovmf-???????/
 packages/
 keys/
 mkdud
 nvmet-server/group_vars/nvme_servers
 network/cleanup.sh
+network/cleanup-router.sh
+network/cleanup-dnsmasq.sh
 nvmet-server/dependencies
 nvmet-server/server-running
 network.conf
@@ -23,3 +26,6 @@ vm/
 current_config
 .vagrant
 autoinst.xml
+timberland-ovmf-*.zip
+tools/ovmf_vars_dump
+tools/ovmf_vars_set

@@ -1,21 +1,27 @@
----
 - name: Setup nvmet Server
   hosts: nvme_servers
   gather_facts: yes
 
-  pre_tasks:
-    - name: construct list of disk serial numbers for nvmet
-      ansible.builtin.set_fact:
-        # It's assumed that the disks in the server VM have serial numbers
-        # "nvme_01", "nvme_02", etc. (see Vagrantfile).
-        # This creates a list ["virtio-nvme_v01", "virtio-nvme_v02", ... ]
-        # The nvmet role will look up the matching devices for these IDs.
-        nvme_disk_ids: >-
-          [{% for x in range(max_namespaces) %}
-          "{{ device_id_format.format(x + 1) }}"
-           {{ "," if loop.revindex != 1 else "" }}
-          {% endfor %}]
+  vars:
+    # It's assumed that the disks in the server VM have serial numbers
+    # "nvme_01", "nvme_02", etc. (see Vagrantfile).
+    # This creates a list ["virtio-nvme_v01", "virtio-nvme_v02", ... ]
+    # The nvmet role will look up the matching devices for these IDs.
+    nvmet_disk_ids: >-
+      [{% for x in range(max_namespaces) %}
+      "{{ device_id_format.format(x + 1) }}"
+      {{ "," if loop.revindex != 1 else "" }}
+      {% endfor %}]
+    # truncate nvmet_subsystems to max_namespaces length
+    nvmet_subsystems: >-
+      {{ all_nvme_subsystems | json_query("[:" ~ max_namespaces ~ "]") }}
+    # Use host and VM hostnames to construct NQN
+    nvmet_subsysnqn_format: >-
+      {{ subsysnqn_prefix ~
+      lookup("pipe", "hostname") | regex_replace("\..*", "") ~ "." ~
+      inventory_hostname ~ ".subsys{0:02d}" }}
 
+  pre_tasks:
     - name: update zypper cache
       become: yes
       ansible.builtin.zypper:
@@ -24,5 +30,43 @@
         update_cache: yes
       when: do_zypper_update
 
+  handlers:
+    - name: restart firewalld
+      become: true
+      systemd:
+        name: firewalld
+        state: restarted
+
+    - name: run netconfig
+      become: true
+      command: netconfig update -f
+
   roles:
     - role: nvmet
+
+  tasks:
+    - name: configure dns policy
+      become: true
+      lineinfile:
+        path: /etc/sysconfig/network/config
+        line: NETCONFIG_DNS_POLICY="eth1 eth2 eth3"
+        regexp: ^NETCONFIG_DNS_POLICY=
+      notify: run netconfig
+
+    - name: disable IPv6_rpfilter
+      become: true
+      lineinfile:
+        path: /etc/firewalld/firewalld.conf
+        line: IPv6_rpfilter=no
+        regexp: ^IPv6_rpfilter=
+      notify: restart firewalld
+
+    - name: enable multihome separation in IPv4
+      become: true
+      copy:
+        dest: /etc/sysctl.d/arp.conf
+        content: |
+          # multihome separation - only announce interface-local addresses via
+          # arp
+          net.ipv4.conf.all.arp_ignore=2
+          net.ipv4.conf.all.arp_announce=2

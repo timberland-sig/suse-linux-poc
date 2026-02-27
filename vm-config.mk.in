@@ -11,7 +11,7 @@ VM_VGA_FLAGS :=
 # run "make sudo-hint" for sudo configuration
 VM_NETWORK_TYPE := bridge
 
-# For testing VLAN, set VM_NETWORK_TYPE=ovs and VLAN_ID=$(OVS_VLAN_ID)
+# For testing VLAN, set VM_NETWORK_TYPE=ovs and VLAN_ID > 0
 # Otherwise, set to 0
 VLAN_ID := 0
 
@@ -23,10 +23,19 @@ CONFIG := Static4
 # If emtpy, the networks will be isolated.
 USE_GW :=
 
+# Like the above, for the 2nd network interface
+VM_NETWORK_TYPE_1 :=
+VLAN_ID_1 :=
+CONFIG_1 :=
+USE_GW_1 :=
+
 ### NVME SETTINGS
 
 # Set to 1 to use NVMe discovery
 DISCOVERY:=
+
+# Same for 2nd attempt
+DISCOVERY_1 :=
 
 # If DISCOVERY is emtpy, subsystem number to use to construct subsystem NQN
 # If subsys <= NVME_MAX_NAMESPACES, this subsys will be auto-enabled for
@@ -39,3 +48,7 @@ SUBSYS := 01
 BASE_DIST := leap
 # Always use leap versioning scheme, e.g. 15.4 here
 VERSION := 15.5
+
+# Set to 7-digit abbreviated git commit hash if you want a specific
+# timberland OVMF release
+# OVMF_RELEASE :=

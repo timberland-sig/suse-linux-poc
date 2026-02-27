@@ -2,29 +2,52 @@
 nvmet_nvmet_zone: "internal"
 
 # firewalld zone for other interfaces
-# (don't touch if empty)
-nvmet_other_zone: ""
+# only touched if defined and non-empty
+# nvmet_other_zone:
 
-# prefix for subsystem NQNs (change this!)
-subsysnqn_prefix: "nqn.1900-01.org.bogus:"
+# Format string for subsystem NQNs (change this!)
+# the string should contain a format for integers (python string.format()
+# style), e.g. "{0:02d}"
+nvmet_subsysnqn_format: >-
+  "nqn.1992-09.de.suse.dept:{{ inventory_hostname }}.nvmet.subsys{0:02d}"
 
-# List of disk ids to use as namespaces
+# List of "disk ids" (links in /dev/disk/by-id) to use as namespaces
 # The nvmet role will look them up in ansible_facts.devices.*.links.ids
-nvme_disk_ids: []
+# That looks like this:
+# ansible_facts.devices["vdb"].links =
+# {
+#   "ids": [
+#     "virtio-nvme_v01"
+#   ],
+#   "labels": [],
+#   "uuids": []
+# }
+# Example:
+# nvmet_disk_ids:
+#  - virtio-nvme_v01      # a virtio disk with given serial number
+#  - scsi-3600a098038302d414b2b4d4453475070
+nvmet_disk_ids: []
 
 # Networks (address/netmask format) to serve nvmet
 # Example:
-# nvme_networks:
+# nvmet_networks:
 #   - 192.168.100.0/24
 #   - 192.168.10.0/24
-nvme_networks: []
+nvmet_networks: []
 
-# definition of subsystems and namespaces
-# an array of objects indicating a list of disks (namespaces)
-# and a list of allowed host uuids
-# disks are numbered from 1, largest number is NDISKS from Vagrantfile
+# Definition of subsystems and namespaces
+#
+# An array of objects indicating with two fields "disks" and "hosts".
+# disks is a list of integers. The elements represent the namespaces
+# of the subsystem.
+# They are numbered from 1 and refer to elements of nvmet_disk_ids.
+# Disk 1 is nvmet_disk_ids[0], etc.
+# host is a list of UUID strings.
+# NVMe host NQNs are constructed from UUIDs by prepending
+# "nqn.2014-08.org.nvmexpress:uuid:" to the UUID.
+#
 # Example:
-# nvme_subsystems:
+# nvmet_subsystems:
 #   - disks: [1, 2]
 #     hosts:
 #       - 74c564fe-b433-4e6a-b9e7-4d7bfe2e34fd
@@ -32,4 +55,4 @@ nvme_networks: []
 #     hosts:
 #       - 74c564fe-b433-4e6a-b9e7-4d7bfe2e34fd
 #       - a3483208-f630-4363-a1b3-a3c057686ac5
-nvme_subsystems: []
+nvmet_subsystems: []

@@ -5,22 +5,25 @@
 # This limits the number of boot clients (see group_vars/nvme_server)
 MAX_NAMESPACES = ENV["NVME_MAX_NAMESPACES"] ? ENV["NVME_MAX_NAMESPACES"].to_i : 2
 USE_OVS = ENV["NVME_USE_OVS"] ? ENV["NVME_USE_OVS"].to_i > 0 : false
-VLAN_ID = ENV["OVS_VLAN_ID"] ? ENV["OVS_VLAN_ID"] : "5"
+N_VLANS = ENV["NVME_N_VLANS"] ? ENV["NVME_N_VLANS"].to_i : 1
 SERVER_NAME = ENV["SERVER_NAME"] ? ENV["SERVER_NAME"] : "vagrant-nvmet"
 STORAGE_POOL = ENV["STORAGE_POOL"] ? ENV["STORAGE_POOL"] : "default"
+N_BRIDGES =  ENV["NVME_N_BRIDGES"] ? ENV["NVME_N_BRIDGES"].to_i : 1
 
 Vagrant.configure("2") do |config|
   
   config.vm.define SERVER_NAME do |server|
-    server.vm.box = "opensuse/Leap-15.4.x86_64"
+    server.vm.box = "opensuse/Leap-15.6.x86_64"
     server.vm.hostname = SERVER_NAME
     server.vm.provider :libvirt do |libvirt|
       libvirt.memory = 2048
     end
 
-    # A sample libvirt-managed host-only network
-    server.vm.network :private_network,
-                      :libvirt__network_name => "br_nvme"
+    (1..N_BRIDGES).each do |bridge|
+      # A sample libvirt-managed host-only network
+      server.vm.network :private_network,
+                        :libvirt__network_name => "br_nvme%d" % bridge
+    end
 
     if USE_OVS
       # A sample OpenVSwitch network
@@ -29,12 +32,15 @@ Vagrant.configure("2") do |config|
                         :ovs => true,
                         :network_name => "ovs_nvme",
                         :portgroup => "pg0"
-      # Tagged network
-      server.vm.network :public_network,
-                        :type => "network",
-                        :ovs => true,
-                        :network_name => "ovs_nvme",
-                        :portgroup => "pg" + VLAN_ID
+
+      # Tagged networks
+      (1..N_VLANS).each do |vlan|
+        server.vm.network :public_network,
+                          :type => "network",
+                          :ovs => true,
+                          :network_name => "ovs_nvme",
+                          :portgroup => "pg%d" % vlan
+      end
     end
 
     # Additional disks to serve as NVMeoF namespaces
@@ -65,5 +71,7 @@ Vagrant.configure("2") do |config|
       "nvme_servers" => [SERVER_NAME],
     }
   end
+  
+  config.vm.synced_folder "./", "/vagrant", type: "rsync"
 
 end

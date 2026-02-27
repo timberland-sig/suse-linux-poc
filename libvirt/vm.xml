@@ -56,6 +56,18 @@
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
     </interface>
+    <interface type='network'>
+      <mac address='52:54:00:4f:97:ea'/>
+      <source network='host0'/>
+      <model type='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x03' slot='0x00' function='0x0'/>
+    </interface>
+    <interface type='network'>
+      <mac address='52:54:00:4f:97:eb'/>
+      <source network='host0'/>
+      <model type='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x04' slot='0x00' function='0x0'/>
+    </interface>
     <serial type='pty'>
       <target type='isa-serial' port='0'>
 	<model name='isa-serial'/>
@@ -67,6 +79,10 @@
     <channel type='spicevmc'>
       <target type='virtio' name='com.redhat.spice.0'/>
       <address type='virtio-serial' controller='0' bus='0' port='2'/>
+    </channel>
+    <channel type="unix">
+      <target type="virtio" name="org.qemu.guest_agent.0"/>
+      <address type="virtio-serial" controller="0" bus="0" port="1"/>
     </channel>
     <input type='mouse' bus='ps2'/>
     <input type='keyboard' bus='ps2'/>

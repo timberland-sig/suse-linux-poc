@@ -18,24 +18,47 @@ walkthrough for developers](BASIC.md).
 
 # Full Proof-of-Concept
 
-## Quick Start for the Impatient
+## Quick Start for the Impatient (EDK2 release 72976af and later)
 
  * Check the [Prerequisites](#prerequisites).
  * Run **make help-rootless** and apply the [suggested settings](#enabling-rootless-operation).
  * Run **make server-up**.
- * Run **make AUTOINST=1 inst**, hit ESC quickly after VM startup.
- * Open Boot Manager and start `EFI Internal Shell`, let `startup.nsh`
-   run. The boot menu will be displayed.
- * Open the boot manager again and watch out for an "NVMe" entry. If it
-   doesn't exist, something went wrong, see below.
- * Reset the VM from the EFI Menu, it will reboot.
+
+### Libvirt variant
+
+ * **libvirt:**
+   - Run `make libvirt`[^autoinst]. You'll see a message from libvirt that a new
+	 domain has been created.
+   - Open the newly created domain in virt-manager. Hit the `ESC` key when the
+	 Tiano Core logo is displayed.
+ * **Plain qemu:**
+   - Run **make inst**[^autoinst]. The VM will start up and the output will be
+   shown in the terminal.
+   - Hit `ESC` quickly after VM startup.
+ * In the BIOS setup menu, select `Device Manager`, then `NVMe-oF
+   Configuration`
+ * Select `Attempt 1`
+   - Select `NVM Subsystem: Enabled`
+   - Open "Network Device List", and select the only currently configured
+     interface[^vlan].
+   - For the simplest configuration, select `Enable DHCP` and `Subsystem info
+     from DHCP`.
+   - Select `Save Changes`.
+ * Back in the setup menu, reset the server.
  * Select the DVD as boot device. The Installation menu
    will be displayed.
- * Edit the `Installation` entry, and add `console=ttyS0` to the kernel
-   command line.
- * Start the installation.
- * After installation, the installed VM will boot from NVMe-oF. 
-   The root password is "timberland".
+ * **Plain qemu:** Edit the `Installation` entry, and add `console=ttyS0`
+   to the kernel command line.
+ * Start the installation and proceed as usual.
+ * After installation, the installed VM will boot from NVMe-oF.
+
+[^autoinst]: Add `AUTOINST=1` to the `make` command line to use fully
+    automatic installation. The root password after installtion in this mode
+    is "timberland". 
+
+[^vlan]: If you need or want to use a VLAN, you'll need to configure a VLAN in
+    the "VLAN Configuration" dialog, which is accessible from the `Device
+    Manager → Network Device List → MAC:...` page.
 
 ## Features
 
@@ -75,27 +98,35 @@ While most of this Proof of Concept can be run rootless, some commands require
 superuser priviliges, in particular network setup. Your user ID should have
 permissions to run virtual machines both under plain qemu[^qemu_ovs] and under
 libvirt. On most modern Linux distributions, this is granted by
-adding the user to the groups `qemu` (or `kvm`) and `libvirt`, respectively.
+adding the user to the groups `qemu` and/or `kvm` and `libvirt`, respectively.
 
 [^qemu_ovs]: qemu will only be run under your user ID if no OpenVSwitch bridge
 	is used, because bringing up openvswitch interfaces doesn't work with
 	rootless qemu.
 
-Thr command **make help-rootless** prints configuration hints
+In the default setup without OpenVSwitch, the virtual network is set up
+using a regular Linux bridge, and qemu is run under your user ID.
+This requires the name of the bridge `br_nvme` to be listed in
+`/etc/qemu/bridge.conf` (see below).  Besides, **qemu-bridge-helper** must be
+installed SUID root, and the user running **qemu** must have permissions to
+execute it. The details vary between distributions. On OpenSUSE, you must
+be member of the `kvm` group.
+
+The command **make help-rootless** prints configuration hints
 to enable passwordless execution for those commands
 that need root permissions.
 The output looks like this, with some variables substituted to
 match your environment:
 
     ###  User joe must be able control qemu and libvirt
-    Usually that means joe should be member of the groups "qemu" and "libvirt"
+    Usually that means joe should be member of the groups "kvm" and "libvirt"
     
     ### Recommended sudoers configuration (add with visudo):
     User_Alias NVME_USERS = joe
     Host_Alias NVME_HOSTS = workstation
     Cmd_Alias NVME_CMDS = /home/joe/nvme-poc/qemu.sh ""
     Cmd_Alias NVME_NET = /home/joe/nvme-poc/network/setup.sh "", /home/joe/nvme-poc/network/cleanup.sh ""
-    Defaults!NVME_CMDS env_keep += "VM_NAME VM_UUID VM_OVMF_IMG VM_BRIDGE VM_ISO VM_DUD VM_VGA_FLAGS V"
+    Defaults!NVME_CMDS env_keep += "VM_NAME VM_UUID OVMF_RELEASE VM_BRIDGE VM_BRIDGE_1 VM_ISO VM_DUD VM_VGA_FLAGS V"
     Defaults!NVME_NET env_keep += "NVME_USE_OVS V"
     NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_CMDS
     NVME_USERS NVME_HOSTS=(root) NOPASSWD: NVME_NET
@@ -157,7 +188,7 @@ should work for your first installation. You can change the settings later.
 
 The PoC uses openSUSE Leap or SUSE Linux Enterprise (SLE)
 (`BASE_DIST` in `vm-config.mk`).
-Versions 15.4 and 15.5 are supported (`VERSION` in
+Versions 15.4 - 15.7 are supported (`VERSION` in
 `vm-config.mk`). If you have an installation medium (DVD) for the configured
 openSUSE distribution around, copy or link it to `install.iso` in the top directory.
 Otherwise, the next command will download the image from the internet[^iso].
@@ -237,8 +268,8 @@ The individual settings are:
   contains native support for NVMe-oF/TCP boot, whereas 15.4 needs a driver
   update disk (DUD) with updated packages. The PoC scripts will build the DUD
   automatically.
-* `VLAN_ID`: (only in OVS setups with `VM_NETWORK_TYPE=ovs`): If set to 1
-  (actually, `$(OVS_VLAN_ID)`), a tagged VLAN with VLAN ID 1 will be
+* `VLAN_ID`: (only in OVS setups with `VM_NETWORK_TYPE=ovs`): If set to a
+  number between 1 an NVME_N_VLANS, a tagged VLAN with VLAN ID 1 will be
   configured on the client VM.
 * `USE_GW`: Add a gateway. This makes it possible to configure a target that
   is outside the directly attached subnet of the VM. Actually doing that

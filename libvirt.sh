@@ -30,16 +30,26 @@ libvirt_network_name() {
 }
 
 LV_NET=$(libvirt_network_name "$VM_BRIDGE")
-LV_PG=$(xsltproc --stringparam id "$VLAN_ID" "$LV_DIR/portgroup.xslt" <(virsh net-dumpxml "$LV_NET"))
+if [[ $VM_BRIDGE_1 ]]; then
+    LV_NET_1=$(libvirt_network_name "$VM_BRIDGE_1")
+fi
+if [[ $EXT_BRIDGE ]]; then
+    EXT_NET=$(libvirt_network_name "$EXT_BRIDGE")
+fi
 
-: "${BASE:=$MYDIR/ovmf}"
+: "${BASE:=$MYDIR/ovmf-$OVMF_RELEASE}"
 : "${OVMF_CODE:=$BASE/OVMF_CODE.fd}"
 : "${OVMF_VARS:=$BASE/OVMF_VARS.fd}"
 : "${MAC0:=$(echo "$VM_UUID" | sed -E 's/.*(..)(..)(..)/52:54:00:\1:\2:\3/')}"
+: "${MAC1:=$(echo "$VM_UUID" | sed -E 's/.*(..)(..)(..)/52:54:01:\1:\2:\3/')}"
 
 [[ -f $OVMF_CODE ]]
 [[ -f $OVMF_VARS ]]
-[[ -f $MYDIR/efidisk.img ]]
+if [[ -f "$MYDIR/efidisk.img" ]]; then
+    EFIDISK=$MYDIR/efidisk.img
+else
+    EFIDISK=
+fi
 
 VARS="$MYDIR/vm/$VM_NAME-vars.bin"
 # initialize UEFI vars pflash
@@ -54,9 +64,13 @@ xsltproc \
     --stringparam ovmf_code "$OVMF_CODE" \
     --stringparam ovmf_vars "$VARS" \
     --stringparam network "$LV_NET" \
-    --stringparam portgroup "$LV_PG" \
+    --stringparam portgroup "trunk" \
     --stringparam mac_address "$MAC0" \
+    --stringparam network1 "$LV_NET_1" \
+    --stringparam portgroup1 "trunk" \
+    --stringparam mac_address1 "$MAC1" \
     --stringparam iso "${VM_ISO:+$MYDIR/$VM_ISO}" \
     --stringparam dud "${VM_DUD:+$MYDIR/$VM_DUD}" \
-    --stringparam efidisk "$MYDIR/efidisk.img" \
+    --stringparam efidisk "$EFIDISK" \
+    --stringparam ext_network "$EXT_NET" \
     "$LV_DIR/vm.xslt" "$LV_DIR/vm.xml"
