@@ -275,13 +275,13 @@ s/HostId:.*/HostId:$(VM_UUID)/;\
 	fi; \
 )
 
-efidisk/Config0: efidisk/startup.nsh config/$(CONFIG) current_config
+efidisk/Config0: config/$(CONFIG) current_config
 	$(call make_config,$(CONFIG),$(VLAN_ID),$(MACADDR),$(IPADDR),$(TARGET),$(GATEWAY),$(VM_UUID),$@,1)
 
-efidisk/Config1: efidisk/startup.nsh config/$(CONFIG_1) current_config
+efidisk/Config1: config/$(CONFIG_1) current_config
 	$(call make_config,$(CONFIG_1),$(VLAN_ID_1),$(MACADDR_1),$(IPADDR_1),$(TARGET_1),$(GATEWAY_1),,$@,2)
 
-efidisk/Config: efidisk/Config0 $(if $(CONFIG_1),efidisk/Config1,) efidisk/startup.nsh config/$(CONFIG_1) current_config
+efidisk/Config: efidisk/Config0 $(if $(CONFIG_1),efidisk/Config1,) config/$(CONFIG_1) current_config
 	@echo === building $@ because of $?
 	$(Q)cat efidisk/Config0 $(if $(CONFIG_1),efidisk/Config1,) >$@
 ifneq ($(V),)
@@ -289,7 +289,7 @@ ifneq ($(V),)
 	cat $@
 endif
 
-efidisk.img:	efidisk/Config $(EFI_EXES:%=efidisk/%)
+efidisk.img:	efidisk/Config efidisk/startup.nsh $(EFI_EXES:%=efidisk/%)
 	@echo === building $@ because of $?
 	$(Q)truncate -s $(EFIDISK_MB)M $@
 	$(Q)mformat -v EFI-NBFT -h 2 -s 1024 -t $(EFIDISK_MB) -i $@ "::"
