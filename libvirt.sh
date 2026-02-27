@@ -42,7 +42,11 @@ fi
 
 [[ -f $OVMF_CODE ]]
 [[ -f $OVMF_VARS ]]
-[[ -f $MYDIR/efidisk.img ]]
+if [[ -f "$MYDIR/efidisk.img" ]]; then
+    EFIDISK=$MYDIR/efidisk.img
+else
+    EFIDISK=
+fi
 
 VARS="$MYDIR/vm/$VM_NAME-vars.bin"
 # initialize UEFI vars pflash
@@ -64,5 +68,5 @@ xsltproc \
     --stringparam mac_address1 "$MAC1" \
     --stringparam iso "${VM_ISO:+$MYDIR/$VM_ISO}" \
     --stringparam dud "${VM_DUD:+$MYDIR/$VM_DUD}" \
-    --stringparam efidisk "$MYDIR/efidisk.img" \
+    --stringparam efidisk "$EFIDISK" \
     "$LV_DIR/vm.xslt" "$LV_DIR/vm.xml"
