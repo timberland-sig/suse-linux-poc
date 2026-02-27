@@ -27,3 +27,5 @@ current_config
 .vagrant
 autoinst.xml
 timberland-ovmf-*.zip
+tools/ovmf_vars_dump
+tools/ovmf_vars_set

@@ -216,6 +216,10 @@ ifneq ($(ALL_CFG),$(file <current_config))
 .PHONY: current_config
 endif
 
+OVMF_TOOLS := tools/ovmf_vars_dump tools/ovmf_vars_set
+tools/%: tools/%.c
+	$(CC) -Wall -g -O2 -o $@ $^
+
 efitools/%.efi: ovmf-$(OVMF_RELEASE)/%.efi
 	$(Q)ln -f $< $@
 
@@ -453,6 +457,7 @@ libvirt-clean:x
 clean:	net-down vars-clean
 	$(Q)rm -rf efidisk packages keys ovmf
 	$(Q)rm -f efidisk.img $(DUD) *~ vm/*~ vm/*.xml current_config timberland-ovmf.zip
+	$(Q)rm -f $(OVMF_TOOLS)
 	$(Q)rm -f mkdud efitools/NvmeOfCli.efi install.iso autoinst.xml
 	$(Q)rm -f nvmet-server/group_vars/nvme_servers vm-config.mk env-config.mk
 
