@@ -47,3 +47,6 @@ STORAGE_POOL := default
 # Name of a bridge device to use for external networking, e.g. "virbr1"
 EXT_BRIDGE :=
 
+# EXPERIMENTAL FEATURE: use tools/ovmf_vars_set to directly manipulate
+# OVMF variable store
+MODIFY_OVMF_VARS :=
